@@ -21,3 +21,5 @@
 @docs/world-authoring.md
 @docs/mud-precedents.md
 @docs/consent-and-safety.md
+@docs/implementation.md
+@docs/decisions.md
