@@ -99,5 +99,36 @@ export async function migrate(): Promise<void> {
       webhook_token TEXT NOT NULL,
       created_at TIMESTAMPTZ NOT NULL DEFAULT now()
     );
+
+    -- Seed initial data for Milestone 0001: Vertical Slice
+    -- Insert party-1 and admin-1 rooms if they don't exist
+    INSERT INTO rooms (id, name, binding, oversight_of, created_at)
+    VALUES 
+      ('11111111-1111-1111-1111-111111111111', 'party-1', '{"writeTarget":{"type":"party","partyId":"11111111-1111-1111-1111-111111111111"},"readSet":[{"type":"world"},{"type":"party","partyId":"11111111-1111-1111-1111-111111111111"},{"type":"character"}],"emitSet":[{"type":"world"}]}'::jsonb, '{}'::uuid[], now())
+      ON CONFLICT (id) DO NOTHING,
+      
+      ('22222222-2222-2222-2222-222222222222', 'admin-1', '{"writeTarget":{"type":"governance","roomId":"22222222-2222-2222-2222-222222222222"},"readSet":[{"type":"governance","roomId":"22222222-2222-2222-2222-222222222222"},{"type":"meta","roomId":"22222222-2222-2222-2222-222222222222"}],"emitSet":[]}'::jsonb, '{}'::uuid[], now())
+      ON CONFLICT (id) DO NOTHING;
+
+    -- Insert player and gm roles if they don't exist
+    INSERT INTO roles (id, name, definition)
+    VALUES 
+      ('33333333-3333-3333-3333-333333333333', 'player', '{"readScopes":[{"type":"world"},{"type":"party","partyId":"11111111-1111-1111-1111-111111111111"}],"writeScopes":[{"type":"party","partyId":"11111111-1111-1111-1111-111111111111"}],"capabilities":["act:say","act:roll","act:pause"],"narrativeAttributes":[]}'::jsonb)
+      ON CONFLICT (id) DO NOTHING,
+      
+      ('44444444-4444-4444-4444-444444444444', 'gm', '{"readScopes":[{"type":"governance","roomId":"22222222-2222-2222-2222-222222222222"},{"type":"meta","roomId":"22222222-2222-2222-2222-222222222222"}],"writeScopes":[{"type":"governance","roomId":"22222222-2222-2222-2222-222222222222"}],"capabilities":["canonize","safety:review"],"narrativeAttributes":[]}'::jsonb)
+      ON CONFLICT (id) DO NOTHING;
+
+    -- Grant player role to a simulated user in party-1 room
+    INSERT INTO role_grants (id, user_id, room_id, role_id, granted_at, granted_by, precedence)
+    VALUES 
+      ('55555555-5555-5555-5555-555555555555', 'simulated-user-1', '11111111-1111-1111-1111-111111111111', '33333333-3333-3333-3333-333333333333', now(), 'system', 0)
+      ON CONFLICT (id) DO NOTHING;
+
+    -- Grant gm role to a simulated user in admin-1 room
+    INSERT INTO role_grants (id, user_id, room_id, role_id, granted_at, granted_by, precedence)
+    VALUES 
+      ('66666666-6666-6666-6666-666666666666', 'simulated-user-2', '22222222-2222-2222-2222-222222222222', '44444444-4444-4444-4444-444444444444', now(), 'system', 0)
+      ON CONFLICT (id) DO NOTHING;
   `);
 }
