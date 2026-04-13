@@ -25,10 +25,11 @@ services:
         condition: service_healthy
     environment:
       DATABASE_URL: postgres://multiuser:multiuser@postgres:5432/multiuser
-      NODE_ENV: production
+      NODE_ENV: development
       LOG_LEVEL: info
     env_file:
-      - ../.env
+      - path: ../.env
+        required: false
     ports:
       - '3000:3000'
 

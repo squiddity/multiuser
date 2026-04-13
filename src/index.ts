@@ -1,6 +1,8 @@
 import { env } from './config/env.js';
 import { logger } from './config/logger.js';
 import { close, ping } from './store/client.js';
+import { migrate } from './store/migrate.js';
+import { runSmoke } from './store/smoke.js';
 import { WorkerRegistry } from './core/worker.js';
 import { ResolverRegistry } from './resolvers/registry.js';
 import { CronerScheduler } from './scheduler/croner-impl.js';
@@ -10,6 +12,13 @@ async function main(): Promise<void> {
 
   await ping();
   logger.info('database reachable');
+
+  await migrate();
+  logger.info('schema ready');
+
+  if (env.NODE_ENV !== 'production') {
+    await runSmoke(logger);
+  }
 
   const workers = new WorkerRegistry();
   const resolvers = new ResolverRegistry();
