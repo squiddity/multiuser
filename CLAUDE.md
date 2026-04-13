@@ -19,3 +19,5 @@
 @docs/ui-and-interactions.md
 @docs/rules-resolution.md
 @docs/world-authoring.md
+@docs/mud-precedents.md
+@docs/consent-and-safety.md
