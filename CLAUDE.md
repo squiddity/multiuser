@@ -13,3 +13,4 @@
 
 @docs/framework-evaluation.md
 @docs/memory-model.md
+@docs/rooms-and-roles.md
