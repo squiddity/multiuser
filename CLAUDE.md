@@ -15,3 +15,4 @@
 @docs/memory-model.md
 @docs/rooms-and-roles.md
 @docs/runtime-and-processing.md
+@docs/platform-adapter.md

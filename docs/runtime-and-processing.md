@@ -144,6 +144,45 @@ Delivery surfaces:
 
 When a decision arrives, the **open-question resolver** worker applies it: either the invention is promoted to canon (scope rewrite), replaced with the authored answer, or retracted; dependent statements are updated via supersedes records.
 
+### Narrating around pending questions
+
+Live play cannot halt every time the agent invents something worth escalating. The agent must continue narration while specific decisions remain pending. Techniques the agent is expected to use:
+
+- **Non-committal framing.** Inventions are phrased so they could collapse to multiple resolutions without retraction (e.g. "the blacksmith has a reputation you can't quite place" rather than "the blacksmith is a retired assassin").
+- **Offscreen deferral.** Details that would hinge on the pending decision are kept offscreen until resolved (the back room the players can't yet enter; the NPC who is "out of town this week").
+- **Scope shrinking.** When an invention would only matter to this party, the agent is freer to commit party-locally; when it would touch world canon (an entity, a faction, a rule) it waits.
+- **Compatibility tracking.** Each pending question carries a `compatible-with` set — the narrative frames that remain viable given subsequent narration. The agent prunes framings that would close off a pending decision before it's made.
+
+Pending-question state is loaded as part of prompt assembly for live narration: the agent sees both the world it has and the doors it must not yet close.
+
+### Priority and escalation
+
+Open questions are not a single bucket. Each carries a computed priority:
+
+- `blocks_count` — how many unresolved dependent statements rely on this question.
+- `age` — how long the question has been pending.
+- `scope_breadth` — party-local vs. world-touching (world-touching escalates faster).
+- `narrative_pressure` — explicit tag when the live narration is actively steering around the question.
+
+Priority thresholds trigger escalation in stages:
+
+1. **Deferred** (default) — accumulates to the next scheduled digest into the authoring room.
+2. **Surfaced** — posted as a standalone inquiry into the authoring room on the next worker tick; no live notification.
+3. **Live inquiry** — posted with notification (Discord @-role, etc.) into the authoring room. Play continues, but the authoring role is actively prompted.
+4. **Blocking** — the question is marked `blocks` on the originating room's next turn; the agent will not narrate past the pending decision. Reserved for rare cases (a canon contradiction too large to defer around).
+
+The stage is a property of the question, updated by a lightweight worker watching priority inputs. Escalation is always up; de-escalation only on resolution.
+
+### In-tone rendering
+
+When the authoring room is itself in-fiction (per the wizard-cabal example in `rooms-and-roles.md`), the agent may render a governance inquiry in narrative voice appropriate to that room — portents, omens, a petitioner's plea, a vision delivered — while the underlying structured question (subject, candidate, blocks, priority) remains attached as statement fields.
+
+- The mechanical record is canonical; the narrative rendering is a view for in-room presentation.
+- Resolution may arrive in-character (the cabal decrees; a god answers) and is parsed back into a structured decision by the steering-formalizer worker.
+- For meta authoring rooms (pure-GM, pantheon as authors), rendering is plain; the two paths share one data model.
+
+This is where the wizard cabal receiving a vision from the agent and the pure-meta GM receiving a bullet-point inquiry are the same escalation with different rendering rules.
+
 This protocol is what makes consistency *measurable* rather than aspirational (next section).
 
 ## Measurable consistency
