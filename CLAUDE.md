@@ -11,4 +11,5 @@
 
 ## Imports
 
-<!-- Add @docs/<file>.md lines here as documents are created. -->
+@docs/framework-evaluation.md
+@docs/memory-model.md
