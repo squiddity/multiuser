@@ -17,12 +17,7 @@ async function main(): Promise<void> {
   await scheduler.start();
 
   logger.info(
-    {
-      workers: workers.list(),
-      resolvers: resolvers.list(),
-      modelCheap: env.MODEL_CHEAP,
-      modelPremium: env.MODEL_PREMIUM,
-    },
+    { workers: workers.list(), resolvers: resolvers.list() },
     'ready',
   );
 

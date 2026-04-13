@@ -20,11 +20,10 @@ Fix the concrete stack, component topology, and code layout for v1. Everything a
 
 ## Model providers
 
-- **Per-agent model selection** via a small `src/models/registry.ts` mapping logical names (`cheap`, `premium`, plus per-agent overrides) to AI SDK `LanguageModel` instances.
-- **Default production provider: OpenRouter** (`@openrouter/ai-sdk-provider`) with env-configurable slugs — Minimax / Qwen defaults for `cheap` and `premium`.
-- **Default testing provider: Anthropic direct** (`@ai-sdk/anthropic`) — Claude Sonnet 4.6 for most testing, Opus 4.6 for quality-sensitive verification.
-- **Embeddings: OpenAI `text-embedding-3-small`** (1536 dim); swap to Voyage or local if cost or privacy demands.
-- Every agent asks the registry by logical name; deployments adjust env to move cost around without code changes.
+- **Per-agent model selection** via `resolveModel(spec)` in `src/models/registry.ts`. Spec is a provider-prefixed string: `"<provider>:<slug>"`, e.g. `openrouter:qwen/qwen-2.5-72b-instruct`, `anthropic:claude-opus-4-6`, `openai:gpt-4o-mini`.
+- **Agent definitions own their model choice.** No logical aliases ("cheap"/"premium"); each agent/role declares the spec appropriate for its job. A scheduled consistency reviewer that needs a large context window for daily digests and a chat-path narrator are separate declarations — they may sit on different providers and different slugs independently.
+- **Supported providers**: OpenRouter (`@openrouter/ai-sdk-provider`), Anthropic (`@ai-sdk/anthropic`), OpenAI (`@ai-sdk/openai`). Keys are optional — only providers referenced by registered agent specs must be configured; `resolveModel` throws at resolution time if the required key is missing.
+- **Embeddings**: OpenAI `text-embedding-3-small` (1536 dim) initially; swap when cost/privacy pressure warrants.
 
 ## How Mastra fits
 

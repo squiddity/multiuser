@@ -10,8 +10,6 @@ const EnvSchema = z.object({
   OPENROUTER_API_KEY: z.string().optional(),
   ANTHROPIC_API_KEY: z.string().optional(),
   OPENAI_API_KEY: z.string().optional(),
-  MODEL_CHEAP: z.string().default('qwen/qwen-2.5-72b-instruct'),
-  MODEL_PREMIUM: z.string().default('qwen/qwen3-max'),
   EMBED_MODEL: z.string().default('text-embedding-3-small'),
   EMBED_DIM: z.coerce.number().int().positive().default(1536),
   DISCORD_BOT_TOKEN: z.string().optional(),
