@@ -18,6 +18,14 @@ Fix the concrete stack, component topology, and code layout for v1. Everything a
 - **Testing: Vitest** (unit + integration). Fixtures live as seed statements in a dedicated `eval` scope.
 - **Dev: Docker Compose** (Postgres, pgadmin optional, service container). Single-process Node for v1 prod.
 
+## Model providers
+
+- **Per-agent model selection** via a small `src/models/registry.ts` mapping logical names (`cheap`, `premium`, plus per-agent overrides) to AI SDK `LanguageModel` instances.
+- **Default production provider: OpenRouter** (`@openrouter/ai-sdk-provider`) with env-configurable slugs — Minimax / Qwen defaults for `cheap` and `premium`.
+- **Default testing provider: Anthropic direct** (`@ai-sdk/anthropic`) — Claude Sonnet 4.6 for most testing, Opus 4.6 for quality-sensitive verification.
+- **Embeddings: OpenAI `text-embedding-3-small`** (1536 dim); swap to Voyage or local if cost or privacy demands.
+- Every agent asks the registry by logical name; deployments adjust env to move cost around without code changes.
+
 ## How Mastra fits
 
 - **Workflows** host multi-step processes: bootstrap stages, briefing generation, canonization review, reconciler batches, safety-pause handling. Each workflow is a typed Mastra workflow that reads/writes through our statement store functions.

@@ -333,6 +333,12 @@ Format:
 - **R** — Simplicity wins until scale forces it.
 - **S** — v1.
 
+### D49. Model providers and defaults
+- **Q** — which LLM(s) do agents use, and how is the choice expressed?
+- **D** — Per-agent model selection via a model registry mapping logical names (`cheap`, `premium`, plus optional per-agent overrides) to AI SDK `LanguageModel` instances. Default production provider: **OpenRouter** (`@openrouter/ai-sdk-provider`) with Minimax / Qwen slugs in `cheap` and `premium` slots, fully configurable in env. Anthropic direct (`@ai-sdk/anthropic`) is the default for testing and quality-sensitive paths (Claude Sonnet 4.6 baseline, Opus 4.6 opt-in). Embeddings via OpenAI (`text-embedding-3-small`, 1536 dim) initially per D44.
+- **R** — Mastra consumes AI SDK providers natively, so the registry composes cleanly with existing provider packages. Per-agent overrides keep cost tunable (cheap narrator in casual rooms, premium in high-stakes scenes).
+- **S** — v1.
+
 ### D48. Secrets management
 - **Q** — `.env` / dotenv or a secrets manager?
 - **D** — `.env` for v1. Migrate to a secrets manager when deploying multi-environment.

@@ -1,0 +1,36 @@
+services:
+  postgres:
+    image: pgvector/pgvector:pg16
+    environment:
+      POSTGRES_USER: multiuser
+      POSTGRES_PASSWORD: multiuser
+      POSTGRES_DB: multiuser
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+      - ./postgres-init.sql:/docker-entrypoint-initdb.d/00-init.sql:ro
+    ports:
+      - '5432:5432'
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U multiuser -d multiuser']
+      interval: 2s
+      timeout: 5s
+      retries: 20
+
+  app:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgres://multiuser:multiuser@postgres:5432/multiuser
+      NODE_ENV: production
+      LOG_LEVEL: info
+    env_file:
+      - ../.env
+    ports:
+      - '3000:3000'
+
+volumes:
+  postgres-data:
