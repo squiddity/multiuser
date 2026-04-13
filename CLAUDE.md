@@ -17,3 +17,5 @@
 @docs/runtime-and-processing.md
 @docs/platform-adapter.md
 @docs/ui-and-interactions.md
+@docs/rules-resolution.md
+@docs/world-authoring.md
