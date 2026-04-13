@@ -16,3 +16,4 @@
 @docs/rooms-and-roles.md
 @docs/runtime-and-processing.md
 @docs/platform-adapter.md
+@docs/ui-and-interactions.md
