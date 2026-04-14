@@ -10,6 +10,16 @@
 - Pull docs into context with `@docs/<file>.md` imports below, added as the docs are created.
 - The agent should consult all markdown files in the `docs/` directory for project details, whether or not they are explicitly imported above.
 
+## Running tests
+
+- **Unit tests** (no DB): `pnpm test` or `npx vitest run`
+- **Integration tests** (require Postgres): `pnpm test:integration` or `npx vitest run test/integration`
+  - Start Postgres first: `docker compose -f docker/compose.yml up -d postgres`
+  - Tests self-migrate and clean up. Safe to re-run.
+- **Type check**: `npx tsc --noEmit`
+- **Format**: `npx prettier --write .` (fix) or `npx prettier --check .` (check)
+- **All CI**: typecheck, unit tests, integration tests, format check
+
 ## Imports
 
 @docs/framework-evaluation.md

@@ -14,10 +14,28 @@ export const Role = z.object({
 });
 export type Role = z.infer<typeof Role>;
 
+export const ScopePattern = z.discriminatedUnion('type', [
+  z.object({ type: z.literal('world') }),
+  z.object({ type: z.literal('party'), partyId: z.string().uuid().optional() }),
+  z.object({ type: z.literal('character'), characterId: z.string().uuid().optional() }),
+  z.object({ type: z.literal('session'), sessionId: z.string().uuid().optional() }),
+  z.object({ type: z.literal('meta'), roomId: z.string().uuid().optional() }),
+  z.object({
+    type: z.literal('rules'),
+    system: z.string().min(1),
+    variant: z.enum(['base', 'house']).default('base'),
+  }),
+  z.object({ type: z.literal('style'), worldId: z.string().uuid().optional() }),
+  z.object({ type: z.literal('governance'), roomId: z.string().uuid().optional() }),
+  z.object({ type: z.literal('mapping') }),
+  z.object({ type: z.literal('eval') }),
+]);
+export type ScopePattern = z.infer<typeof ScopePattern>;
+
 export const ScopeBinding = z.object({
   writeTarget: Scope,
-  readSet: z.array(Scope),
-  emitSet: z.array(Scope).default([]),
+  readSet: z.array(ScopePattern),
+  emitSet: z.array(ScopePattern).default([]),
 });
 export type ScopeBinding = z.infer<typeof ScopeBinding>;
 

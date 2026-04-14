@@ -16,7 +16,7 @@ export interface AppendStatementInput {
   embedding?: number[] | null;
 }
 
-function scopeParts(scope: Scope): { scopeType: string; scopeKey: string | null } {
+export function scopeParts(scope: Scope): { scopeType: string; scopeKey: string | null } {
   switch (scope.type) {
     case 'world':
     case 'mapping':

@@ -71,6 +71,38 @@ pnpm test
 
 Runs Vitest. Covers Zod schema parsing, worker registry, and other pure-logic tests.
 
+### Integration tests (require Postgres)
+
+Integration tests hit a real database. They self-migrate on setup and clean up after themselves.
+
+1. Start Postgres:
+
+   ```bash
+   docker compose -f docker/compose.yml up -d postgres
+   ```
+
+2. Ensure `.env` has `DATABASE_URL` pointing at the local Postgres (default: `postgres://multiuser:multiuser@localhost:5432/multiuser`).
+
+3. Run integration tests:
+
+   ```bash
+   pnpm test:integration
+   ```
+
+   Or run a single file:
+
+   ```bash
+   npx vitest run test/integration/scope-isolation.test.ts
+   ```
+
+4. (Optional) Stop Postgres when done:
+
+   ```bash
+   docker compose -f docker/compose.yml stop postgres
+   ```
+
+Integration tests use `beforeAll` to run the migration and seed data, and `afterAll` to clean up inserted rows. They can safely re-run against the same DB.
+
 ### Type checking
 
 ```bash
@@ -106,6 +138,7 @@ A passing CI run should include:
 
 1. `pnpm typecheck` — no type errors
 2. `pnpm test` — all unit tests pass
-3. `pnpm format:check` — code is formatted
-4. `docker compose -f docker/compose.yml build app` — Docker build succeeds
-5. `docker compose -f docker/compose.yml up -d` — full stack starts, app logs `ready`
+3. `pnpm test:integration` — all integration tests pass (requires Postgres)
+4. `pnpm format:check` — code is formatted
+5. `docker compose -f docker/compose.yml build app` — Docker build succeeds
+6. `docker compose -f docker/compose.yml up -d` — full stack starts, app logs `ready`
