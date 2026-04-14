@@ -8,6 +8,8 @@ import { WorkerRegistry } from './core/worker.js';
 import { ResolverRegistry } from './resolvers/registry.js';
 import { CronerScheduler } from './scheduler/croner-impl.js';
 import { EventBus } from './core/events.js';
+import { app, getPort } from './api/app.js';
+import { serve } from '@hono/node-server';
 
 async function main(): Promise<void> {
   logger.info({ env: env.NODE_ENV }, 'starting multiuser');
@@ -29,6 +31,13 @@ async function main(): Promise<void> {
   const resolvers = new ResolverRegistry();
   const scheduler = new CronerScheduler(workers, logger, events);
   await scheduler.start();
+
+  const port = getPort();
+  const server = serve({
+    fetch: app.fetch,
+    port,
+  });
+  logger.info({ port }, 'http server started');
 
   logger.info({ workers: workers.list(), resolvers: resolvers.list() }, 'ready');
 

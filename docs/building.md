@@ -132,13 +132,72 @@ Runs automatically on boot when `NODE_ENV !== 'production'`. Verifies:
 
 Both test rows are deleted after verification.
 
+## Hermetic API tests (Docker + pytest)
+
+Black-box API tests that run against the full stack in Docker. The tests are Python + pytest + httpx — they share zero code with the app under test and prove the HTTP contract from first principles.
+
+### Prerequisites (host)
+
+- Python 3.12+ with `pytest` and `httpx`:
+  ```bash
+  pip install pytest httpx
+  ```
+- Docker + Docker Compose
+
+### Running the full suite
+
+```bash
+pnpm test:api
+```
+
+This script (`scripts/api-test.sh`) does the following:
+
+1. Builds and starts Postgres + app containers via `docker/compose.api-test.yml`
+2. Waits for the app's `/health` endpoint to return 200
+3. Runs `pytest test-api/ --junitxml=test-results/api-results.xml`
+4. Tears down containers
+5. Exits with the test exit code
+
+### Running against an already-running dev server
+
+If you already have the app running locally (via `pnpm dev` or Docker Compose):
+
+```bash
+pytest test-api/
+```
+
+Default URL is `http://localhost:3000`. Override with `API_URL`:
+
+```bash
+API_URL=http://my-staging:3000 pytest test-api/
+```
+
+### Test structure
+
+```
+test-api/
+  conftest.py           # session-scoped httpx.Client, health-wait fixture
+  test_health.py         # GET /health
+  test_statements.py     # statement CRUD round-trip
+  test_scopes.py          # scope isolation via API
+```
+
+Tests are pure HTTP calls — they import nothing from `src/`. If the API contract changes, the tests break (that's the point).
+
+### Test layers
+
+| Layer          | What                   | Runs where                    | Tool   |
+| -------------- | ---------------------- | ----------------------------- | ------ |
+| Unit           | Pure logic, no DB      | Host, `pnpm test`             | Vitest |
+| Integration    | DB-roundtrip internals | Host, `pnpm test:integration` | Vitest |
+| API / hermetic | HTTP contract          | Host → Docker                 | pytest |
+
 ## CI checklist
 
 A passing CI run should include:
 
 1. `pnpm typecheck` — no type errors
-2. `pnpm test` — all unit tests pass
-3. `pnpm test:integration` — all integration tests pass (requires Postgres)
-4. `pnpm format:check` — code is formatted
+2. `pnpm test` — all unit + integration tests pass
+3. `pnpm format:check` — code is formatted
+4. `pnpm test:api` — hermetic API tests pass against Docker stack
 5. `docker compose -f docker/compose.yml build app` — Docker build succeeds
-6. `docker compose -f docker/compose.yml up -d` — full stack starts, app logs `ready`

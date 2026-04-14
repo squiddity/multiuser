@@ -84,3 +84,11 @@ export async function listByScope(scope: Scope, opts: { kind?: string; limit?: n
     .orderBy(desc(statements.createdAt))
     .limit(opts.limit ?? 100);
 }
+
+export async function deleteStatement(id: string): Promise<boolean> {
+  const result = await db
+    .delete(statements)
+    .where(eq(statements.id, id))
+    .returning({ id: statements.id });
+  return result.length > 0;
+}
