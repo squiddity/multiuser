@@ -2,6 +2,7 @@ import { Cron } from 'croner';
 import { randomUUID } from 'node:crypto';
 import type { Scheduler, TriggerSpec } from '../core/scheduler.js';
 import type { WorkerRegistry } from '../core/worker.js';
+import type { EventBus, StatementEvent } from '../core/events.js';
 import type { Logger } from 'pino';
 
 interface Entry {
@@ -13,13 +14,24 @@ interface Entry {
   timeout?: NodeJS.Timeout;
 }
 
+type EventPredicate = Extract<TriggerSpec, { type: 'event' }>['predicate'];
+
+function matchesPredicate(event: StatementEvent, predicate: EventPredicate): boolean {
+  if (predicate.kind !== undefined && predicate.kind !== event.kind) return false;
+  if (predicate.scopeType !== undefined && predicate.scopeType !== event.scopeType) return false;
+  if (predicate.scopeKey !== undefined && predicate.scopeKey !== event.scopeKey) return false;
+  return true;
+}
+
 export class CronerScheduler implements Scheduler {
   private readonly entries = new Map<string, Entry>();
   private running = false;
+  private unsubscribe?: () => void;
 
   constructor(
     private readonly workers: WorkerRegistry,
     private readonly logger: Logger,
+    private readonly events?: EventBus,
   ) {}
 
   async schedule(trigger: TriggerSpec, workerName: string, payload: unknown): Promise<string> {
@@ -47,14 +59,33 @@ export class CronerScheduler implements Scheduler {
 
   async start(): Promise<void> {
     this.running = true;
+    if (this.events) {
+      this.unsubscribe = this.events.on<StatementEvent>('statement:created', (event) => {
+        this.onStatementEvent(event);
+      });
+    }
     for (const e of this.entries.values()) this.arm(e);
   }
 
   async stop(): Promise<void> {
     this.running = false;
+    if (this.unsubscribe) {
+      this.unsubscribe();
+      this.unsubscribe = undefined;
+    }
     for (const e of this.entries.values()) {
       e.cron?.stop();
       if (e.timeout) clearTimeout(e.timeout);
+    }
+  }
+
+  private onStatementEvent(event: StatementEvent): void {
+    for (const entry of this.entries.values()) {
+      if (entry.trigger.type !== 'event') continue;
+      if (!matchesPredicate(event, entry.trigger.predicate)) continue;
+      this.fireNow(entry.workerName, entry.payload).catch((err) =>
+        this.logger.error({ err, worker: entry.workerName }, 'worker failed from event trigger'),
+      );
     }
   }
 
@@ -71,6 +102,6 @@ export class CronerScheduler implements Scheduler {
       const ms = Math.max(0, at - Date.now());
       entry.timeout = setTimeout(run, ms);
     }
-    // 'event' triggers wire up elsewhere (event bus not yet implemented).
+    // event triggers are handled by onStatementEvent — no arming needed
   }
 }

@@ -7,6 +7,7 @@ import { runSmoke } from './store/smoke.js';
 import { WorkerRegistry } from './core/worker.js';
 import { ResolverRegistry } from './resolvers/registry.js';
 import { CronerScheduler } from './scheduler/croner-impl.js';
+import { EventBus } from './core/events.js';
 
 async function main(): Promise<void> {
   logger.info({ env: env.NODE_ENV }, 'starting multiuser');
@@ -23,9 +24,10 @@ async function main(): Promise<void> {
     await runSmoke(logger);
   }
 
+  const events = new EventBus();
   const workers = new WorkerRegistry();
   const resolvers = new ResolverRegistry();
-  const scheduler = new CronerScheduler(workers, logger);
+  const scheduler = new CronerScheduler(workers, logger, events);
   await scheduler.start();
 
   logger.info({ workers: workers.list(), resolvers: resolvers.list() }, 'ready');
