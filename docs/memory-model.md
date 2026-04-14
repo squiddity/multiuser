@@ -91,6 +91,43 @@ Agent behavior when narrating to Party A about something Party B has also touche
 - Tool invocations inherit the caller's scope; a tool cannot read or write outside it without an explicit privileged capability.
 - Embeddings themselves can leak content via similarity. Cross-scope similarity queries are disallowed; no global "nearest neighbor across all parties" operation exists.
 
+## User–character relationship
+
+Character scope is not simply "the user's own data" — user and character are distinct identities with an N-to-M relationship, and the retrieval layer must narrow the character scope per-user at read time.
+
+### Resolvers
+
+Two queries express the binding:
+
+- `getActingCharacter(userId, roomId) → characterId | null` — the character the user is currently speaking *as* in this room. Drives retrieval narrowing and write attribution. Null means the user plays no character here.
+- `getCharactersForUser(userId, roomId) → characterId[]` — every character this user may read private scope of (primary-owned + delegated). Used by UI surfaces (`/act-as` autocomplete, character-sheet picker) and by admin tools.
+
+Wildcard character patterns (`{type:'character'}` with no id) in a room's readSet are legitimate declarations — they say "this room may see character scope." The retrieval layer narrows them to the current user's *active* character at query time. A wildcard without an active character resolves to no rows; it never expands to all characters.
+
+### Acting-as
+
+The currently-acting character is itself a statement (`kind=acting-as`, supersedes chain). Consequences:
+
+- Replay is deterministic; past prompts can be reconstructed with the correct active character at that moment.
+- `/act-as <character>` emits an `acting-as` statement superseding the prior one.
+- No separate "session state" layer — the statement store remains the single source of truth.
+
+### Attribution and provenance
+
+When user U acts as character C, the statement records `authorId = U` with `fields.asCharacter = C`. The real author is never lost. Rendering in-channel may use the character's name and webhook identity, but the audit record always points back to the human.
+
+### v1 vs. future
+
+- **v1** — implicit single character per user per party (the primary ownership grant). `getActingCharacter` returns that character; `getCharactersForUser` returns `[characterId]` or `[]`. No `/act-as` surface yet.
+- **Multi-character per user (deferred)** — a user may own or be delegated onto multiple characters in the same party or across parties. `/act-as <character>` switches the active character within a room. Reads are active-only by default; a user juggling characters sees exactly one character's private scope at a time (matches the per-character recognition model).
+- **Admin impersonation (deferred, two flavors)**:
+  - *Admin-as-character* — an admin or co-GM is delegated onto a PC or NPC and acts as that character. Cheap extension of the same mechanism; `authorId` is the admin, `asCharacter` is the PC. Audit trail intact.
+  - *Admin-as-user* — ghostwriting another human's messages. Rarer, ethically thornier. A separate capability (`impersonate:user`) with explicit disclosure rules; not in v1.
+
+### Leakage rule
+
+Active-only retrieval is the safety stance: a user with two characters does not accidentally cross-read them. A future `/remember-also <character>` could union in additional character scopes by explicit action, but the default is strict.
+
 ## Retention
 
 Memory is designed to be **retained indefinitely by default** — narrative consistency requires it. User-initiated deletion and platform-mandated removal are supported via:

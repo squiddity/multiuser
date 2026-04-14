@@ -19,7 +19,7 @@ Define how users drive decisions, submit actions, view state, and answer governa
 
 Verify current API limits before implementation; these are the capabilities to plan around.
 
-- **Slash commands.** Structured entry points with typed parameters and autocomplete. Good for `/roll`, `/character`, `/propose`, `/link`. Subcommands and groups reduce namespace pressure.
+- **Slash commands.** Structured entry points with typed parameters and autocomplete. Good for `/roll`, `/character`, `/propose`, `/link`. Subcommands and groups reduce namespace pressure. `/act-as <character>` (deferred post-v1) switches the user's active character in a room, per `memory-model.md` → User–character relationship.
 - **Buttons.** Up to 5 per row, up to 5 rows per message. Styles (primary/secondary/success/danger/link) carry semantic weight — use `danger` for retract/overwrite, `success` for canonize/approve, `primary` for narrative choice. Link buttons open external URLs (map viewer, character sheet page).
 - **Select menus.** String, user, role, channel, mentionable. Multi-select with min/max. Use for picking targets (which NPC to address, which companion to aid), long option lists.
 - **Modals.** Short text input and paragraph input, up to a small number of components. The right surface for freeform player narration, GM steering notes, canonization override text — anything that would overflow a chat message's structured framing.

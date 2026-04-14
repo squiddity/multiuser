@@ -1,6 +1,7 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { db, close } from '../../src/store/client.js';
 import { migrate } from '../../src/store/migrate.js';
+import { seed } from '../../src/store/seed.js';
 import { appendStatement } from '../../src/store/statements.js';
 import { retrieveForUserRoom, retrieveByScopes } from '../../src/store/retrieval.js';
 import { roleGrants, statements } from '../../src/store/schema.js';
@@ -23,6 +24,7 @@ const testGrantIds: string[] = [
 
 beforeAll(async () => {
   await migrate();
+  await seed();
 
   await db.delete(roleGrants);
   await db.delete(statements);
@@ -132,12 +134,36 @@ describe('scope-isolation: retrieveForUserRoom', () => {
   });
 
   it('kind filter works within authorized scopes', async () => {
+    // Seed includes a party-scope narration and a party-scope dialogue (from
+    // earlier test setup elsewhere would vary; here we rely on beforeAll's
+    // 'narration' statement and add an extra non-narration kind to prove
+    // exclusion).
+    const excludedId = await appendStatement({
+      scope: { type: 'party', partyId: PARTY_ROOM_ID },
+      kind: 'dialogue',
+      authorType: 'user',
+      authorId: PLAYER_USER,
+      content: 'Hail, friend!',
+    });
+    testStatementIds.push(excludedId);
+
     const rows = await retrieveForUserRoom(PLAYER_USER, PARTY_ROOM_ID, {
       kind: 'narration',
     });
+    expect(rows.length).toBeGreaterThan(0);
     for (const row of rows) {
       expect(row.kind).toBe('narration');
     }
+  });
+
+  it('wildcard {type:"character"} in readSet does NOT leak character scopes', async () => {
+    // party-1's seed readSet includes an unbounded {type:'character'} pattern.
+    // With no active character resolved for PLAYER_USER (v1 getActingCharacter
+    // returns null), the wildcard must drop — the seeded character statement
+    // must not appear in the player's retrieval.
+    const rows = await retrieveForUserRoom(PLAYER_USER, PARTY_ROOM_ID);
+    const scopeTypes = rows.map((r) => r.scopeType);
+    expect(scopeTypes).not.toContain('character');
   });
 });
 

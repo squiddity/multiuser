@@ -66,6 +66,11 @@ export async function getActiveGrantsForUserRoom(
         isNull(roleGrants.revokedAt),
       ),
     )
+    // Ordered ASC for now — all active grants are unioned for read-set
+    // expansion, so order is informational. Per D5 / D6, precedence will
+    // matter when conflicting narrative attributes or interception priorities
+    // need resolution; revisit the sort direction (likely DESC so
+    // highest-precedence wins first-match) when that resolver lands.
     .orderBy(roleGrants.precedence);
   return rows.map((r) => ({
     id: r.id,

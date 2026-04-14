@@ -2,6 +2,7 @@ import { env } from './config/env.js';
 import { logger } from './config/logger.js';
 import { close, ping } from './store/client.js';
 import { migrate } from './store/migrate.js';
+import { seed } from './store/seed.js';
 import { runSmoke } from './store/smoke.js';
 import { WorkerRegistry } from './core/worker.js';
 import { ResolverRegistry } from './resolvers/registry.js';
@@ -17,6 +18,8 @@ async function main(): Promise<void> {
   logger.info('schema ready');
 
   if (env.NODE_ENV !== 'production') {
+    await seed();
+    logger.info('dev seed applied');
     await runSmoke(logger);
   }
 
@@ -25,10 +28,7 @@ async function main(): Promise<void> {
   const scheduler = new CronerScheduler(workers, logger);
   await scheduler.start();
 
-  logger.info(
-    { workers: workers.list(), resolvers: resolvers.list() },
-    'ready',
-  );
+  logger.info({ workers: workers.list(), resolvers: resolvers.list() }, 'ready');
 
   const shutdown = async (sig: string) => {
     logger.info({ sig }, 'shutting down');

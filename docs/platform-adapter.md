@@ -99,6 +99,7 @@ The system acts in each platform via a bot identity.
 - **Reactions.** Consumable as a lightweight feedback signal (e.g. GM upvotes a canonization proposal), recorded as statements in the originating room.
 - **Rate limits.** Discord's per-route limits are well-documented; the reconciler respects them. Bulk operations (large role re-assignment) must be batched.
 - **Identity linking.** Enrollment flow: user runs `/link` command in a bootstrapping channel; bot issues a link token; token is redeemed via a web endpoint tying Discord user id to system user id. Without linking, a Discord user has no capabilities in our system.
+- **Discord identity vs. character identity.** Discord user id maps to system user id; character identity is a separate layer (see `memory-model.md` → User–character relationship). A Discord user may act as multiple characters via `/act-as` (deferred post-v1), and a delegated admin may puppet another user's character. Statement attribution keeps the real Discord-authenticated user as `authorId` regardless of which character the message is rendered as.
 
 ## Governance logging
 
