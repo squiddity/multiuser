@@ -84,15 +84,28 @@ src/
   core/                 # domain types; no framework imports
     statement.ts        # Statement schema, kinds, scope types
     room.ts             # Room, Role, ScopeBinding
+    embedder.ts         # Embedder interface
+    search.ts           # SearchBackend interface, SearchResult
     resolver.ts         # ResolveRequest/Result contracts
     worker.ts           # Worker interface + registry type
     scheduler.ts        # Scheduler interface
   store/                # Postgres + pgvector
     schema.ts           # Drizzle schema
     statements.ts       # append, read, scope-filtered query
-    vectors.ts          # embed + search
-    entities.ts         # structured entity ops
-    mappings.ts         # room↔channel, role↔discord role, user↔discord user
+    retrieval.ts        # scope-filtered read; patternToSql; query-based ANN
+    vectors.ts           # appendAndIndex, embedder/backend singletons
+    embedders/
+      hash.ts           # HashEmbedder (FNV-1a bag-of-tokens, dev/CI)
+    search/
+      pgvector.ts       # PgvectorSearchBackend (scope + ANN via <=>)
+    characters.ts       # stub v1 (getActingCharacter → null)
+    rooms.ts             # rooms/roles/grants queries
+    seed.ts              # dev fixture data (party-1, admin-1, roles)
+    client.ts            # postgres connection
+    migrate.ts           # CREATE TABLE IF NOT EXISTS + indexes
+    smoke.ts             # boot-time substrate check
+    entities.ts           # structured entity ops
+    mappings.ts           # room↔channel, role↔discord role, user↔discord user
     migrations/
   adapters/
     platform.ts         # PlatformAdapter interface
