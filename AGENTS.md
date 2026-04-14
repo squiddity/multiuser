@@ -24,3 +24,4 @@
 @docs/consent-and-safety.md
 @docs/implementation.md
 @docs/decisions.md
+@docs/building.md
