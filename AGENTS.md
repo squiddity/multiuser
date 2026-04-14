@@ -7,8 +7,7 @@
 - One topic per file. Prefer focused docs (e.g. `docs/architecture.md`, `docs/data-model.md`, `docs/decisions/0001-<slug>.md`) over a single sprawling document.
 - Update the relevant doc **as soon as** a fact, decision, or contract becomes stable — don't let knowledge live only in chat.
 - This file (`AGENTS.md`) stays short. It is an index + working agreements. Detail belongs in `docs/`.
-- Pull docs into context with `@docs/<file>.md` imports below, added as the docs are created.
-- The agent should consult all markdown files in the `docs/` directory for project details, whether or not they are explicitly imported above.
+- Active-tier docs (current milestone, decisions, implementation stack, build/run) are auto-imported below. Design docs are discoverable via the on-demand index and should be read when a task touches their area.
 
 ## Running tests
 
@@ -20,18 +19,22 @@
 - **Format**: `npx prettier --write .` (fix) or `npx prettier --check .` (check)
 - **All CI**: typecheck, unit tests, integration tests, format check
 
-## Imports
+## Imports (active tier — always loaded)
 
-@docs/framework-evaluation.md
-@docs/memory-model.md
-@docs/rooms-and-roles.md
-@docs/runtime-and-processing.md
-@docs/platform-adapter.md
-@docs/ui-and-interactions.md
-@docs/rules-resolution.md
-@docs/world-authoring.md
-@docs/mud-precedents.md
-@docs/consent-and-safety.md
-@docs/implementation.md
-@docs/decisions.md
 @docs/building.md
+@docs/decisions.md
+@docs/implementation.md
+@docs/milestones/0001-vertical-slice.md
+
+## On-demand docs (read when relevant)
+
+- `docs/framework-evaluation.md` — criteria and candidates for the agent framework choice.
+- `docs/memory-model.md` — statement store, scopes, canon vs. experience, invention pipeline.
+- `docs/rooms-and-roles.md` — rooms, roles, scope bindings, cross-room flows, interception.
+- `docs/runtime-and-processing.md` — workers, triggers, scheduler tiers, open-question protocol, consistency metrics.
+- `docs/platform-adapter.md` — platform-agnostic adapter interface; Discord v1 specifics.
+- `docs/ui-and-interactions.md` — interaction surfaces, Discord UI patterns, deferred media.
+- `docs/rules-resolution.md` — Resolver interface; agent-backed vs. deterministic; rulings-as-canon.
+- `docs/world-authoring.md` — ingestion pipeline, bootstrap flow, seed vs. play-invented canon.
+- `docs/mud-precedents.md` — MUD/tabletop conventions adopted, roadmap, non-goals.
+- `docs/consent-and-safety.md` — v1 safety primitives, capability integration, policy.
