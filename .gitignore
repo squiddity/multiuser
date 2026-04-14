@@ -8,3 +8,4 @@ coverage/
 .vitest-cache/
 drizzle/meta/
 .claude/
+test-api/__pycache__/
