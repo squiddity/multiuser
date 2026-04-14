@@ -1,6 +1,10 @@
 services:
   postgres:
     image: pgvector/pgvector:pg16
+    shm_size: 256m
+    security_opt:
+      - seccomp:unconfined
+      - apparmor:unconfined
     environment:
       POSTGRES_USER: multiuser
       POSTGRES_PASSWORD: multiuser
@@ -11,7 +15,7 @@ services:
     ports:
       - '5432:5432'
     healthcheck:
-      test: ['CMD-SHELL', 'pg_isready -U multiuser -d multiuser']
+      test: ['CMD-SHELL', 'pg_isready -U multiuser -d multiuser -h 127.0.0.1']
       interval: 2s
       timeout: 5s
       retries: 20
