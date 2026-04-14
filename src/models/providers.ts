@@ -11,6 +11,4 @@ export const anthropic = env.ANTHROPIC_API_KEY
   ? createAnthropic({ apiKey: env.ANTHROPIC_API_KEY })
   : null;
 
-export const openai = env.OPENAI_API_KEY
-  ? createOpenAI({ apiKey: env.OPENAI_API_KEY })
-  : null;
+export const openai = env.OPENAI_API_KEY ? createOpenAI({ apiKey: env.OPENAI_API_KEY }) : null;

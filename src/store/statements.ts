@@ -70,10 +70,7 @@ export async function getStatements(ids: string[]) {
   return db.select().from(statements).where(inArray(statements.id, ids));
 }
 
-export async function listByScope(
-  scope: Scope,
-  opts: { kind?: string; limit?: number } = {},
-) {
+export async function listByScope(scope: Scope, opts: { kind?: string; limit?: number } = {}) {
   const { scopeType, scopeKey } = scopeParts(scope);
   const conds = [
     eq(statements.scopeType, scopeType),

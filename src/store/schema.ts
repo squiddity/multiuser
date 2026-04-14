@@ -42,9 +42,14 @@ export const statements = pgTable(
     icOoc: text('ic_ooc'),
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
     supersedes: uuid('supersedes'),
-    sources: uuid('sources').array().notNull().default(sql`'{}'::uuid[]`),
+    sources: uuid('sources')
+      .array()
+      .notNull()
+      .default(sql`'{}'::uuid[]`),
     content: text('content').notNull(),
-    fields: jsonb('fields').notNull().default(sql`'{}'::jsonb`),
+    fields: jsonb('fields')
+      .notNull()
+      .default(sql`'{}'::jsonb`),
     embedding: vector('embedding', EMBED_DIM),
   },
   (t) => ({
@@ -60,7 +65,9 @@ export const entities = pgTable('entities', {
   name: text('name').notNull(),
   scopeType: text('scope_type').notNull(),
   scopeKey: text('scope_key'),
-  fields: jsonb('fields').notNull().default(sql`'{}'::jsonb`),
+  fields: jsonb('fields')
+    .notNull()
+    .default(sql`'{}'::jsonb`),
   primaryStatementId: uuid('primary_statement_id').references(() => statements.id),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
 });
@@ -69,7 +76,10 @@ export const rooms = pgTable('rooms', {
   id: uuid('id').primaryKey().defaultRandom(),
   name: text('name').notNull(),
   binding: jsonb('binding').notNull(),
-  oversightOf: uuid('oversight_of').array().notNull().default(sql`'{}'::uuid[]`),
+  oversightOf: uuid('oversight_of')
+    .array()
+    .notNull()
+    .default(sql`'{}'::uuid[]`),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   archivedAt: timestamp('archived_at', { withTimezone: true }),
 });
@@ -109,7 +119,9 @@ export const mappings = pgTable(
     sourceId: text('source_id').notNull(),
     platform: text('platform').notNull(),
     platformId: text('platform_id').notNull(),
-    fields: jsonb('fields').notNull().default(sql`'{}'::jsonb`),
+    fields: jsonb('fields')
+      .notNull()
+      .default(sql`'{}'::jsonb`),
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
     supersedes: uuid('supersedes'),
   },

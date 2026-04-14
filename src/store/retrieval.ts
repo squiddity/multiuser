@@ -1,15 +1,15 @@
-import { and, desc, eq, or, sql } from 'drizzle-orm';
+import { and, desc, eq, inArray, or, sql } from 'drizzle-orm';
 import { db } from './client.js';
 import { statements } from './schema.js';
 import { getRoom, getRole, getActiveGrantsForUserRoom } from './rooms.js';
 import { getActingCharacter } from './characters.js';
+import { getBackend } from './vectors.js';
 import type { Scope } from '../core/statement.js';
 import type { ScopePattern } from '../core/room.js';
 
 export interface RetrieveOptions {
   limit?: number;
   kind?: string;
-  // Reserved for Task 3 (embeddings + ANN). Ignored by scope-only retrieval.
   query?: string;
 }
 
@@ -26,11 +26,9 @@ export interface StatementRow {
   sources: string[];
   content: string;
   fields: Record<string, unknown>;
+  score?: number;
 }
 
-// Explicit projection — the embedding vector is 1536 floats we don't need on
-// the live-responder path. Task 3's ANN path will add a retrieveSimilar variant
-// that does project embeddings.
 const selection = {
   id: statements.id,
   scopeType: statements.scopeType,
@@ -46,7 +44,7 @@ const selection = {
   fields: statements.fields,
 };
 
-function patternToSql(pattern: ScopePattern) {
+export function patternToSql(pattern: ScopePattern) {
   switch (pattern.type) {
     case 'world':
     case 'mapping':
@@ -58,9 +56,6 @@ function patternToSql(pattern: ScopePattern) {
       }
       return sql`${statements.scopeType} = 'party'`;
     case 'character':
-      // Wildcard character patterns must be narrowed by resolveReadPatterns
-      // before reaching here. If one slips through, match nothing rather than
-      // leaking every character scope.
       if (pattern.characterId) {
         return sql`${statements.scopeType} = 'character' AND ${statements.scopeKey} = ${pattern.characterId}`;
       }
@@ -109,8 +104,6 @@ async function resolveReadPatterns(
     for (const s of role.readScopes) rawPatterns.push(s as ScopePattern);
   }
 
-  // Narrow wildcard character patterns to the user's currently-acting character.
-  // A wildcard with no active character drops — see memory-model.md.
   const acting = rawPatterns.some((p) => p.type === 'character' && !p.characterId)
     ? await getActingCharacter(userId, roomId)
     : null;
@@ -146,6 +139,27 @@ export async function retrieveForUserRoom(
 ): Promise<StatementRow[]> {
   const { patterns, hasGrants } = await resolveReadPatterns(userId, roomId);
   if (!hasGrants || patterns.length === 0) return [];
+
+  if (opts.query) {
+    const results = await getBackend().search(patterns, {
+      text: opts.query,
+      limit: opts.limit ?? 100,
+      kind: opts.kind,
+    });
+    if (results.length === 0) return [];
+    const ids = results.map((r) => r.statementId);
+    const rows = await db
+      .select(selection)
+      .from(statements)
+      .where(inArray(statements.id, ids))
+      .orderBy(desc(statements.createdAt));
+    const scoreMap = new Map(results.map((r) => [r.statementId, r.score] as const));
+    return rows.map((row) => ({
+      ...row,
+      score: scoreMap.get(row.id),
+    })) as StatementRow[];
+  }
+
   const where = buildWhere(patterns, opts.kind);
   const rows = await db
     .select(selection)
@@ -162,6 +176,27 @@ export async function retrieveByScopes(
 ): Promise<StatementRow[]> {
   if (scopes.length === 0) return [];
   const patterns: ScopePattern[] = scopes.map((s) => s as ScopePattern);
+
+  if (opts.query) {
+    const results = await getBackend().search(patterns, {
+      text: opts.query,
+      limit: opts.limit ?? 100,
+      kind: opts.kind,
+    });
+    if (results.length === 0) return [];
+    const ids = results.map((r) => r.statementId);
+    const rows = await db
+      .select(selection)
+      .from(statements)
+      .where(inArray(statements.id, ids))
+      .orderBy(desc(statements.createdAt));
+    const scoreMap = new Map(results.map((r) => [r.statementId, r.score] as const));
+    return rows.map((row) => ({
+      ...row,
+      score: scoreMap.get(row.id),
+    })) as StatementRow[];
+  }
+
   const where = buildWhere(patterns, opts.kind);
   const rows = await db
     .select(selection)

@@ -36,6 +36,10 @@ export async function migrate(): Promise<void> {
   await pg.unsafe(`
     CREATE INDEX IF NOT EXISTS statements_supersedes_idx ON statements (supersedes);
   `);
+  await pg.unsafe(`
+    CREATE INDEX IF NOT EXISTS statements_embedding_idx
+      ON statements USING ivfflat (embedding vector_cosine_ops) WITH (lists = 100);
+  `);
 
   await pg.unsafe(`
     CREATE TABLE IF NOT EXISTS entities (
