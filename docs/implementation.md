@@ -129,10 +129,14 @@ src/
     interceptor.ts
   resolvers/
     registry.ts
-    dnd5e/              # agent-backed v1
-      agent.ts
-      rulebook-scope.ts
-      action-catalog.ts
+    agent.ts              # AgentBackedResolver — context-driven, markdown-instructed
+    tools/
+      roll.ts             # AI SDK tool: roll(count, sides, modifier?, seed?)
+      retrieve.ts         # AI SDK tool: retrieve(scope, query)
+    types.ts              # shared resolver agent types (instructions config, tool defs)
+    dnd5e/
+      instructions.md     # skill-check agent instructions (data artifact)
+      actions.ts          # describeActions — reads instruction metadata
   agents/               # Mastra agent + workflow specs
     narrator.ts
     world-author.ts
@@ -169,44 +173,68 @@ docker/
 ```ts
 // core/statement.ts
 export const StatementKind = z.enum([
-  "narration", "dialogue", "pose", "inner-monologue", "private-message",
-  "mechanical", "ruling", "invention", "canon-reference",
-  "briefing", "steering", "open-question", "authoring-decision",
-  "safety-invocation", "governance", "mapping", "interception",
-  "eval", "reaction", "decision", "command-query"
+  'narration',
+  'dialogue',
+  'pose',
+  'inner-monologue',
+  'private-message',
+  'mechanical',
+  'ruling',
+  'invention',
+  'canon-reference',
+  'briefing',
+  'steering',
+  'open-question',
+  'authoring-decision',
+  'safety-invocation',
+  'governance',
+  'mapping',
+  'interception',
+  'eval',
+  'reaction',
+  'decision',
+  'command-query',
 ]);
 
-export const Scope = z.discriminatedUnion("type", [
-  z.object({ type: z.literal("world") }),
-  z.object({ type: z.literal("party"), partyId: z.string().uuid() }),
-  z.object({ type: z.literal("character"), characterId: z.string().uuid() }),
-  z.object({ type: z.literal("session"), sessionId: z.string().uuid() }),
-  z.object({ type: z.literal("meta"), roomId: z.string().uuid() }),
-  z.object({ type: z.literal("rules"), system: z.string(), variant: z.enum(["base", "house"]).default("base") }),
-  z.object({ type: z.literal("style"), worldId: z.string().uuid() }),
-  z.object({ type: z.literal("governance"), roomId: z.string().uuid() }),
-  z.object({ type: z.literal("mapping") }),
-  z.object({ type: z.literal("eval") }),
+export const Scope = z.discriminatedUnion('type', [
+  z.object({ type: z.literal('world') }),
+  z.object({ type: z.literal('party'), partyId: z.string().uuid() }),
+  z.object({ type: z.literal('character'), characterId: z.string().uuid() }),
+  z.object({ type: z.literal('session'), sessionId: z.string().uuid() }),
+  z.object({ type: z.literal('meta'), roomId: z.string().uuid() }),
+  z.object({
+    type: z.literal('rules'),
+    system: z.string(),
+    variant: z.enum(['base', 'house']).default('base'),
+  }),
+  z.object({ type: z.literal('style'), worldId: z.string().uuid() }),
+  z.object({ type: z.literal('governance'), roomId: z.string().uuid() }),
+  z.object({ type: z.literal('mapping') }),
+  z.object({ type: z.literal('eval') }),
 ]);
 
 export const Statement = z.object({
   id: z.string().uuid(),
   scope: Scope,
   kind: StatementKind,
-  authorType: z.enum(["user", "agent", "system"]),
+  authorType: z.enum(['user', 'agent', 'system']),
   authorId: z.string(),
-  icOoc: z.enum(["ic", "ooc"]).optional(),
+  icOoc: z.enum(['ic', 'ooc']).optional(),
   createdAt: z.string().datetime(),
   supersedes: z.string().uuid().optional(),
   sources: z.array(z.string().uuid()).default([]),
   content: z.string(),
-  fields: z.record(z.unknown()).default({}),     // kind-specific structured payload
-  embedding: z.array(z.number()).optional(),     // populated async
+  fields: z.record(z.unknown()).default({}), // kind-specific structured payload
+  embedding: z.array(z.number()).optional(), // populated async
 });
 
 // core/resolver.ts
-export const ResolveRequest = z.object({ /* … per rules-resolution.md … */ });
-export const ResolveResult  = z.object({ /* … */ });
+export const ResolveRequest = z.object({
+  /* … per rules-resolution.md … */
+});
+export const ResolveResult = z.object({
+  /* … */
+});
 export interface Resolver {
   system: string;
   resolve(req: z.infer<typeof ResolveRequest>): Promise<z.infer<typeof ResolveResult>>;

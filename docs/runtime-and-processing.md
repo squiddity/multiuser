@@ -2,7 +2,7 @@
 
 ## Purpose
 
-Define how the system is *executed*: which host runs the agent logic, where state lives, how live and scheduled work are dispatched, and how narrative consistency is measured. Complements `memory-model.md` (what is stored) and `rooms-and-roles.md` (who can read/write what) by specifying how statements are produced.
+Define how the system is _executed_: which host runs the agent logic, where state lives, how live and scheduled work are dispatched, and how narrative consistency is measured. Complements `memory-model.md` (what is stored) and `rooms-and-roles.md` (who can read/write what) by specifying how statements are produced.
 
 ## Runtime choice
 
@@ -27,12 +27,14 @@ Letta remains a candidate for memory, but its scope model is more opinionated th
 Every output of the system — agent narration, player turn, GM ruling, briefing, steering, canonization, open question, interception record — is a **statement** (per `memory-model.md`). Statements are append-only, addressable by id, scope-tagged, provenance-linked.
 
 Consequences:
+
 - Agents are **stateless workers**. They read a scope-filtered slice, produce statements, write back. No in-memory session object survives across calls.
 - "Respond in channel" and "run daily briefing" are the **same shape of process** with different triggers.
 - Recovery is trivial: restart any worker, read the store, resume. No in-flight state to reconstitute.
 - The store is the audit log and the replay substrate. Prompt reconstruction for any past turn is deterministic from statement ids.
 
 Storage layers (implementation-agnostic):
+
 - Append-only statement log (Postgres, SQLite to start).
 - Vector index with metadata filters and per-scope namespaces (pgvector, Qdrant, LanceDB).
 - Entity/graph store for canonical entities (Postgres with adjacency tables is fine; Neo4j if traversal complexity grows).
@@ -94,12 +96,12 @@ Only a subset of workers need this (multi-step, approval-gated, multi-day). Pure
 
 ### Backend tiers
 
-| Tier | Wall-clock scheduler | Durable workflow | When to use |
-|---|---|---|---|
-| **0. In-process** | `node-cron` / `APScheduler` / `croner` | in-memory state machines, no durability | dev, single-instance, proving the model |
-| **1. OS-native** | `systemd` timers invoking worker CLI | none | small prod, predictable load, operational simplicity |
-| **2. Framework-native** | LangGraph Platform cron jobs; Mastra + scheduled workflows | framework's built-in workflow engine | when already committed to that framework's hosted runtime |
-| **3. Dedicated services** | **Temporal** schedules; **Inngest** cron | Temporal workflows; Inngest step functions | concurrent volume, crash-safety, retries, long workflows, visibility |
+| Tier                      | Wall-clock scheduler                                       | Durable workflow                           | When to use                                                          |
+| ------------------------- | ---------------------------------------------------------- | ------------------------------------------ | -------------------------------------------------------------------- |
+| **0. In-process**         | `node-cron` / `APScheduler` / `croner`                     | in-memory state machines, no durability    | dev, single-instance, proving the model                              |
+| **1. OS-native**          | `systemd` timers invoking worker CLI                       | none                                       | small prod, predictable load, operational simplicity                 |
+| **2. Framework-native**   | LangGraph Platform cron jobs; Mastra + scheduled workflows | framework's built-in workflow engine       | when already committed to that framework's hosted runtime            |
+| **3. Dedicated services** | **Temporal** schedules; **Inngest** cron                   | Temporal workflows; Inngest step functions | concurrent volume, crash-safety, retries, long workflows, visibility |
 
 The contract is: **workers don't know which tier fired them.** Moving from tier 0 to tier 3 is a config and deployment change, not a rewrite. This is why the scheduler is behind an interface and why worker state lives in the statement store rather than in the scheduler's memory.
 
@@ -128,10 +130,12 @@ The same mechanism addresses hallucination prevention, authoring-role coordinati
 **Core rule: the agent never silently commits an unsourced fact.**
 
 When the agent produces a statement, each factual claim is either:
+
 - **Grounded** — a retrieved canon / party / character statement id is recorded as source.
 - **Invention** — no source exists. The invention is recorded with `kind=invention`, scope-tagged as party-local by default, and **an open-question record is emitted** routed to whichever role has canonization authority over that scope.
 
 Open-question records have fields:
+
 - `subject` — what the question is about (entity, event, rule).
 - `candidate` — the invented detail as phrased in context.
 - `routed_to` — role reference (e.g. `wizard-cabal`, `pantheon`).
@@ -139,6 +143,7 @@ Open-question records have fields:
 - `urgency` — live (blocks continued play) or deferred (accumulates to a digest).
 
 Delivery surfaces:
+
 - **Live** — urgent questions post into the authoring room with appropriate notification (Discord @role / @everyone).
 - **Scheduled** — a daily digest bundles deferred questions per authoring room, alongside the day's briefings.
 
@@ -183,7 +188,7 @@ When the authoring room is itself in-fiction (per the wizard-cabal example in `r
 
 This is where the wizard cabal receiving a vision from the agent and the pure-meta GM receiving a bullet-point inquiry are the same escalation with different rendering rules.
 
-This protocol is what makes consistency *measurable* rather than aspirational (next section).
+This protocol is what makes consistency _measurable_ rather than aspirational (next section).
 
 ## Measurable consistency
 
@@ -197,24 +202,26 @@ Four metrics on a rolling window. Each is cheap to compute because the substrate
 All four are derived from statement records; no separate telemetry pipeline is required.
 
 Additionally, an **eval harness** runs offline:
+
 - Held-out canon corpus + synthetic prompts.
 - Measure retrieval precision/recall on entity mentions.
 - Measure generation contradiction rate vs. ground truth.
-- Measure appropriate-invention rate (does the agent ground when it should, invent when it should, and *emit an open question when it invents*?).
+- Measure appropriate-invention rate (does the agent ground when it should, invent when it should, and _emit an open question when it invents_?).
 
 Eval runs are themselves statements (in an `eval` scope), tied to model version and prompt version, so regressions are visible over time.
 
 ## Agent postures & triggers (summary table)
 
-| Posture | Triggers | Writes | Notifies |
-|---|---|---|---|
-| Channel narrator | event: new user message | `party:P` (narration, dialogue, mechanical), `invention` tags, open-questions | live: in-channel, @-role on urgent open-questions |
-| Briefing generator | schedule (daily), signal | `meta:*` (briefing record), back-pointers | none direct; target room reads on next turn |
-| Steering formalizer | event: free-form GM statement | authoring room (structured steering), emit-set into world/party | downstream rooms on next turn |
-| Canonization proposer | schedule (hourly/daily) | authoring room (proposals) | digest to authoring role |
-| Consistency auditor | event: new narration; schedule sweep | `consistency` scope (flags) | urgent: author role; routine: digest |
-| Open-question resolver | event: authoring-role decision | canon / party / retractions | back-pointers to affected rooms |
-| Interceptor | event: flow record in transit | interceptor's room + amended flow | per `rooms-and-roles.md` |
+| Posture                | Triggers                             | Writes                                                                        | Notifies                                          |
+| ---------------------- | ------------------------------------ | ----------------------------------------------------------------------------- | ------------------------------------------------- |
+| Channel narrator       | event: new user message              | `party:P` (narration, dialogue, mechanical), `invention` tags, open-questions | live: in-channel, @-role on urgent open-questions |
+| Briefing generator     | schedule (daily), signal             | `meta:*` (briefing record), back-pointers                                     | none direct; target room reads on next turn       |
+| Steering formalizer    | event: free-form GM statement        | authoring room (structured steering), emit-set into world/party               | downstream rooms on next turn                     |
+| Canonization proposer  | schedule (hourly/daily)              | authoring room (proposals)                                                    | digest to authoring role                          |
+| Consistency auditor    | event: new narration; schedule sweep | `consistency` scope (flags)                                                   | urgent: author role; routine: digest              |
+| Open-question resolver | event: authoring-role decision       | canon / party / retractions                                                   | back-pointers to affected rooms                   |
+| Rules resolver (agent) | event: mechanical action detected  | `party:P` (mechanical, ruling), rolls                                        | narrator uses result for in-tone narration       |
+| Interceptor            | event: flow record in transit        | interceptor's room + amended flow                                             | per `rooms-and-roles.md`                          |
 
 ## Relationship to other docs
 

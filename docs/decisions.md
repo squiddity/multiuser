@@ -412,6 +412,15 @@ Format:
 
 ---
 
+### D52. Resolver agent architecture
+
+- **Q** — should resolver behavior be hardcoded per rules system, or driven by agent instructions? And how many implementation strategies should the Resolver interface support?
+- **D** — The default `Resolver` implementation is `AgentBackedResolver`, parameterized by `(systemId, modelSpec, instructions)`. Instructions are markdown (data, not code); any rules system swaps in its own instructions file without code changes. Shared tool primitives (`roll`, `retrieve`) are available to any resolver. The `Resolver` interface supports three swappable implementations: `AgentBackedResolver` (LLM + instructions + tools, default), `DeterministicResolver` (pure code for hot paths, future), `HybridResolver` (structured system-specific tools inside the agent, future). The dnd5e skill-check instructions are an example data artifact, not a hardcoded module.
+- **R** — An admin should be able to provide a new rulebook (e.g. PF2e, FitD) and get resolver behavior by creating instructions markdown, not by writing code. Hardcoded per-system logic couples agent behavior to engine code and makes adding systems expensive. The instructions-as-data pattern keeps the resolver generic. Multiple implementation strategies share the same interface, so per-kind dispatch is internal to the implementation and callers never change.
+- **S** — v1.
+
+---
+
 ## Remaining open items
 
 Items that survived this pass and should be worked as implementation proceeds:

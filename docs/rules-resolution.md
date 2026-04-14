@@ -13,6 +13,7 @@ Define how mechanical, rules-based questions are resolved in play: combat, skill
 A Resolver exposes a typed I/O contract. Exact serialization is framework-specific; the shape is fixed.
 
 **Input (`ResolveRequest`):**
+
 - `system` — rules system id (`dnd5e`, `pf2e`, …). Selects the concrete Resolver.
 - `kind` — category of resolution (`attack`, `saving-throw`, `skill-check`, `damage`, `effect-application`, `condition-check`, `freeform`).
 - `actor` — entity reference for the subject of the action.
@@ -23,6 +24,7 @@ A Resolver exposes a typed I/O contract. Exact serialization is framework-specif
 - `roll_policy` — whether to roll now, accept a pre-rolled value, or defer to the caller to roll.
 
 **Output (`ResolveResult`):**
+
 - `outcome` — structured resolution (hit/miss, DC met/failed, crit tier, degrees of success where the system supports them).
 - `rolls` — every die rolled with value and purpose.
 - `effects` — structured effects to apply to the world (damage, condition, duration, resource consumption). Effects are proposals, not side effects; the caller applies them by emitting statements.
@@ -36,18 +38,41 @@ Effects are proposals because the store is the authority on state — the caller
 
 An agent-backed Resolver is declared as a specification, not a freeform prompt. The declaration pins the agent's behavior so its I/O is stable enough for the contract to hold:
 
+- **Instructions as data.** Agent behavior is defined by a markdown instructions file, not hardcoded per-system logic. The `AgentBackedResolver` is parameterized by `(systemId, modelSpec, instructions)` — any rules system provides its own instructions. The dnd5e skill-check instructions are an example data artifact, not code.
 - **Seed corpus.** The rulebook text (e.g. D&D 5e SRD) ingested into a `rules:<system>` scope, per the world-authoring pipeline. The resolver's retrieval is restricted to this scope plus the request's `context_statements`.
-- **Tool set.** Dice tool (typed: `roll(count, sides, modifier) -> [values]`), entity-lookup tool (scope-respecting), and no others by default. Tight tool surface prevents drift.
+- **Tool set.** Shared tool primitives available to any resolver: `roll(count, sides, modifier?, seed?) -> [values]` (deterministic with seed), `retrieve(scope, query)` (scope-respecting). Tight tool surface prevents drift. Future: `formatOutput` for Discord-facing structured output.
 - **Output schema.** Strict `ResolveResult` shape; the agent is instructed to refuse rather than improvise schema.
 - **Refusal rules.** Out-of-scope requests (`kind` the rulebook doesn't cover, actions the system doesn't recognize) return an explicit refusal, not a guessed resolution. Callers handle the refusal (narrative fudge, escalation, or rephrase).
 - **Ruling policy.** When the agent must rule beyond the rulebook, it is required to produce a `ruling` object with cited rulebook sections (or none) and reasoning. Silent improvisation is forbidden.
 - **Determinism helpers.** Temperature low; rolls come from the dice tool, not from the model's generation; the same `ResolveRequest` with the same random seed should return the same result.
 
-This declaration format is the same shape whether it lives as a framework skill, an agent card, or a yaml spec — it's the contract between the agent's configuration and the caller's expectations.
+Instructions may be authored directly by a GM, or produced by an ingestion/steering agent that transforms raw rulebook input into structured agent instructions. This makes the resolver a generic inference engine — swap the instructions and you swap the rules system, without code changes.
+
+## AgentBackedResolver implementation
+
+The default implementation of the `Resolver` interface. Uses `generateObject` (Vercel AI SDK) with the instructions as system prompt, rulebook scope as context, and shared tool primitives. Key properties:
+
+- **Generic across rules systems.** No dnd5e-specific logic in the resolver class itself. The system-id determines which instructions and which rulebook scope to use.
+- **Swappable implementations.** `DeterministicResolver` (code-only, for hot paths) and `HybridResolver` (structured tools inside the agent, more 5e-specific) are future implementations of the same `Resolver` interface. The registry doesn't care which implementation it gets.
+- **Model selection per resolver.** Each resolver registration declares its model spec, resolved via `resolveModel()`.
+
+```
+Rulebook (PDF, SRD URL, etc.)
+       │
+       ▼  ingestion / steering agent (world-authoring pipeline)
+Agent instructions (markdown)
+       │
+       ▼
+AgentBackedResolver(systemId, modelSpec, instructions)
+       │
+       ├─ tools: roll(), retrieve()
+       │
+       └─ context: rules:<system> scope + contextStatements
+```
 
 ## One resolver per system
 
-A deployment may run any number of Resolvers, one per rules system. Each is seeded independently and addressed by `system` id on every call. A world declares its primary system, with per-room overrides if a specific room runs under a different system (a one-shot in PF2e inside a 5e campaign is fine).
+A deployment may run any number of Resolvers, one per rules system. Each is registered with its own instructions and model spec, addressed by `system` id on every call. A world declares its primary system, with per-room overrides if a specific room runs under a different system (a one-shot in PF2e inside a 5e campaign is fine).
 
 ## Rulings as canon (precedent accrual)
 
@@ -59,16 +84,17 @@ When the resolver issues a `ruling`, the caller emits a `ruling` statement into 
 
 This is why rulebook seed and play-derived rulings coexist cleanly: they live in different scopes, and the precedent mechanism is explicit rather than emergent.
 
-## Migration to deterministic implementations
+## Resolver implementations
 
-The agent-backed default is not a long-term position for hot paths. Migration strategy:
+Three implementation strategies for the `Resolver` interface, swappable without caller changes:
 
-1. **Measure call frequency and variance** by kind. High-frequency, low-variance calls (attack resolution, damage math, saving throws) are migration candidates. Rare, context-heavy calls (ad-hoc rulings on improvised actions) stay agent-backed.
-2. **Implement the deterministic version behind the same interface.** Same `ResolveRequest` in, same `ResolveResult` out. Tests are the existing statement stream — replay past agent-authored calls against the new engine and compare outputs.
-3. **Swap per-kind, not per-system.** A D&D 5e Resolver may be half code, half agent. The dispatcher routes by `kind`.
-4. **Fall back to the agent for out-of-schema inputs.** If the deterministic engine can't parse the request (freeform action, unknown combination), it returns a "not handled" sentinel and the dispatcher escalates to the agent-backed path.
+1. **`AgentBackedResolver`** — The default. Uses `generateObject` with markdown instructions as system prompt, shared tool primitives, and `rules:<system>` scope retrieval. Generic across rules systems — any system just provides its own instructions file. Determinism via seeded rolls and low temperature.
 
-No caller changes in any of the above. This is the payoff of designing the interface first.
+2. **`DeterministicResolver`** — Pure code for hot paths where frequency is high and variance is low (attack resolution, damage math, saving throws). Same `ResolveRequest` in, same `ResolveResult` out. Tests are replays of past agent-authored calls.
+
+3. **`HybridResolver`** — Adds structured system-specific tools inside the agent (e.g. `calculate5eAC`, `applyResistance`) while keeping the markdown instruction context. Routes by `kind`: code path for known game-math, agent path for ad-hoc rulings. Falls back to `AgentBackedResolver` for out-of-schema inputs.
+
+All three implement the same `Resolver` interface. The registry routes by `system` id; per-kind dispatch is internal to the implementation.
 
 ## Caller pattern
 

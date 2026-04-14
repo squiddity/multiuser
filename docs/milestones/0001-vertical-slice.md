@@ -12,7 +12,7 @@ First interactive milestone: a headless CLI harness exercising two rooms (`party
 - **Verbs**: `/say`, `/roll`, `/pause`, and admin-only `/canonize <open-q-id> <decision>`.
 - **Agents**: `narrator` (party), `steering-formalizer` (admin, parses freeform GM text into structured decisions).
 - **Workers**: `live-responder`, `open-question-resolver`.
-- **Resolver**: dnd5e agent-backed stub, skill-check only.
+- **Resolver**: `AgentBackedResolver` with dnd5e skill-check instructions; skill-check only.
 - **Harness**: CLI REPL with room switching; two simulated users.
 
 Out of scope for this milestone: Discord adapter, briefings, consistency auditor, style extractor, interceptors, combat, anything beyond skill-check.
@@ -35,9 +35,14 @@ src/
     steering-formalizer.ts
   resolvers/
     registry.ts
+    agent.ts              # AgentBackedResolver — context-driven, markdown-instructed
+    tools/
+      roll.ts             # AI SDK tool: roll(count, sides, modifier?, seed?)
+      retrieve.ts         # AI SDK tool: retrieve(scope, query)
+    types.ts              # shared resolver agent types
     dnd5e/
-      agent.ts           # skill-check only
-      actions.ts         # describeActions stub
+      instructions.md     # skill-check agent instructions (data artifact)
+      actions.ts          # describeActions stub — reads instruction metadata
   workers/
     registry.ts
     live-responder.ts
@@ -107,7 +112,7 @@ Each lands as its own commit with the listed test(s).
 3. **Embeddings + vector search.** ✅ Done. `Embedder` interface, `SearchBackend` interface (with `kind` filter on `SearchOptions`), `HashEmbedder` (FNV-1a bag-of-tokens, L2-normalized, no API key), `PgvectorSearchBackend` (reuses `patternToSql`, IVFFlat cosine index), `vectors.ts` singletons + `appendAndIndex`, `LONG_CONTENT_WARN_CHARS` env, `patternToSql` exported, `StatementRow.score` field, query-based retrieval in both `retrieveForUserRoom` and `retrieveByScopes`. Smoke test refactored to `appendAndIndex`. _Test: vector-search (12 cases, all green)._
 4. **Worker + Scheduler interfaces.** ✅ Done. `CronerScheduler` with event triggers (new-statement-matching-predicate); in-process registry. EventBus, appendAndEmit, and 22 unit + 6 integration tests.
 5. **Model registry.** `resolveModel("<provider>:<slug>")` per D49 — Anthropic + OpenAI wired; OpenRouter when first needed.
-6. **Resolver skeleton + dnd5e skill-check.** Agent-backed, tools `roll` + `retrieve`. Returns structured `ResolveResult`. _Test: deterministic with seeded roll._
+6. **Resolver agent framework + dnd5e skill-check.** `AgentBackedResolver` — generic context-driven resolver parameterized by `(systemId, modelSpec, instructions)`, not hardcoded per-system. Instructions are markdown (data, not code); dnd5e skill-check is an example instructions file. Shared tool primitives: `roll(count, sides, modifier?, seed?)`, `retrieve(scope, query)`. Uses `generateObject` with structured `ResolveResult` output. `DeterministicResolver` and `HybridResolver` are future implementations of the same `Resolver` interface. _Test: deterministic with mock provider + seeded roll._
 7. **Narrator agent.** Reads slice → composes → emits `narration`/`pose`/`invention`. Invention auto-emits `open-question` routed to `gm`. _Test: narrator round-trip; invention produces open-question in admin scope._
 8. **Live-responder worker.** Event-triggered on new user statement in a party room; invokes narrator; invokes resolver if mechanical action detected.
 9. **Steering-formalizer agent + open-question-resolver worker.** GM freeform decision → `authoring-decision` → resolver applies (promote / reject / supersede). _Test: full open-q flow._
@@ -128,5 +133,5 @@ Each lands as its own commit with the listed test(s).
 - `implementation.md` — this milestone populates the first concrete pieces of the layout defined there.
 - `rooms-and-roles.md` — the `player`/`gm` pair is the simplest instance of the general room/role model.
 - `runtime-and-processing.md` — live-responder and open-question-resolver are the first two workers; tier-0 scheduler.
-- `rules-resolution.md` — the dnd5e Resolver here is the contract's first implementation, skill-check only.
+- `rules-resolution.md` — the `AgentBackedResolver` here is the contract's first implementation, skill-check only; instructions-as-data pattern enables any rules system.
 - `consent-and-safety.md` — `/pause` is the v1 primitive for this milestone.
