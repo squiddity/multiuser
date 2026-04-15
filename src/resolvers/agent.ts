@@ -53,7 +53,7 @@ export class AgentBackedResolver implements ResolverInterface {
       }
     }
 
-    const systemPrompt = this.config.instructions.systemPrompt;
+    const systemPrompt = this.buildSystemPrompt(req, contextStatements);
 
     try {
       const textResult = await generateText({
