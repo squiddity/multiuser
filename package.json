@@ -9,7 +9,7 @@
     "build": "tsc",
     "start": "node dist/index.js",
     "test": "vitest run test/unit test/smoke.test.ts",
-    "test:integration": "vitest run test/integration",
+    "test:integration": "vitest run test/integration --no-file-parallelism",
     "test:ci": "pnpm typecheck && pnpm test",
     "test:watch": "vitest",
     "test:api": "bash scripts/api-test.sh",
