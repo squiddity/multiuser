@@ -35,7 +35,8 @@ export function rollDice(params: RollParams): { values: number[]; total: number 
 
 export function createRollTool(): Tool {
   return {
-    description: 'Roll dice for skill checks, attacks, and damage. Uses a seed for deterministic results.',
+    description:
+      'Roll dice for skill checks, attacks, and damage. Uses a seed for deterministic results.',
     parameters: RollParams,
     execute: async (params) => {
       const result = rollDice(params);

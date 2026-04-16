@@ -49,7 +49,7 @@ NPCs and characters render with identifiers that depend on the **viewer's** reco
 
 **We do not enforce IC/OOC channel separation.** A statement carries a `kind` hint (`ic` / `ooc` in addition to its structural kind like `pose`, `dialogue`, etc.); the hint informs rendering and retrieval weighting but does not constrain which rooms or users may produce which. Justifications:
 
-- The wizard cabal deliberates "in wizard tongue" — IC-kind statements whose *mechanical steering payload* rides as structured fields on the same record. The agent renders surface prose in-tongue while the canonical record is structured. This is the in-tone rendering from `runtime-and-processing.md`, applied bidirectionally (cabal-authored → agent extracts structure; agent-authored inquiry → cabal sees portents).
+- The wizard cabal deliberates "in wizard tongue" — IC-kind statements whose _mechanical steering payload_ rides as structured fields on the same record. The agent renders surface prose in-tongue while the canonical record is structured. This is the in-tone rendering from `runtime-and-processing.md`, applied bidirectionally (cabal-authored → agent extracts structure; agent-authored inquiry → cabal sees portents).
 - Admin / GM participation in the main party channel with ephemeral private steering is a Roll20-style pattern the platform adapter already supports (see `ui-and-interactions.md` on ephemerals).
 - LLM-generated fiction makes IC/OOC a creative frontier worth experimenting in; channel walls foreclose experimentation.
 - Role/capability policy (per `rooms-and-roles.md`) already handles everything channel walls would: who can say what where is governed by capabilities, not by kind.

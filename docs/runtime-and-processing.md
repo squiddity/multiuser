@@ -220,7 +220,7 @@ Eval runs are themselves statements (in an `eval` scope), tied to model version 
 | Canonization proposer  | schedule (hourly/daily)              | authoring room (proposals)                                                    | digest to authoring role                          |
 | Consistency auditor    | event: new narration; schedule sweep | `consistency` scope (flags)                                                   | urgent: author role; routine: digest              |
 | Open-question resolver | event: authoring-role decision       | canon / party / retractions                                                   | back-pointers to affected rooms                   |
-| Rules resolver (agent) | event: mechanical action detected  | `party:P` (mechanical, ruling), rolls                                        | narrator uses result for in-tone narration       |
+| Rules resolver (agent) | event: mechanical action detected    | `party:P` (mechanical, ruling), rolls                                         | narrator uses result for in-tone narration        |
 | Interceptor            | event: flow record in transit        | interceptor's room + amended flow                                             | per `rooms-and-roles.md`                          |
 
 ## Relationship to other docs

@@ -32,11 +32,7 @@ export class Narrator {
     this.config = config;
   }
 
-  async compose(
-    roomId: string,
-    userId: string,
-    recentContent?: string,
-  ): Promise<NarratorOutput> {
+  async compose(roomId: string, userId: string, recentContent?: string): Promise<NarratorOutput> {
     const prompt = await loadAgentPrompt('narrator', this.config.campaignId ?? null);
     const context = await this.buildContext(roomId, userId);
     const model = resolveModel(this.config.modelSpec);
@@ -60,11 +56,7 @@ export class Narrator {
     }
   }
 
-  async emit(
-    roomId: string,
-    output: NarratorOutput,
-    sources?: string[],
-  ): Promise<string[]> {
+  async emit(roomId: string, output: NarratorOutput, sources?: string[]): Promise<string[]> {
     const room = await getRoom(roomId);
     if (!room) throw new Error(`room not found: ${roomId}`);
 
@@ -167,7 +159,10 @@ Return valid JSON only, no additional text.`;
         openQuestion: parsed.openQuestion,
       };
     } catch (err) {
-      logger.warn({ text: text.substring(0, 200) }, 'narrator: failed to parse output, using as narration');
+      logger.warn(
+        { text: text.substring(0, 200) },
+        'narrator: failed to parse output, using as narration',
+      );
 
       return {
         kind: 'narration',

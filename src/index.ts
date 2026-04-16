@@ -8,8 +8,11 @@ import { WorkerRegistry } from './core/worker.js';
 import { ResolverRegistry } from './resolvers/registry.js';
 import { CronerScheduler } from './scheduler/croner-impl.js';
 import { EventBus } from './core/events.js';
-import { app, getPort } from './api/app.js';
+import { createApp, getPort } from './api/app.js';
+import { liveResponderWorker } from './workers/live-responder.js';
 import { serve } from '@hono/node-server';
+
+const ADMIN_ROOM_ID = '22222222-2222-2222-2222-222222222222';
 
 async function main(): Promise<void> {
   logger.info({ env: env.NODE_ENV }, 'starting multiuser');
@@ -30,8 +33,28 @@ async function main(): Promise<void> {
   const workers = new WorkerRegistry();
   const resolvers = new ResolverRegistry();
   const scheduler = new CronerScheduler(workers, logger, events);
+
+  if (env.DEFAULT_MODEL_SPEC) {
+    workers.register(liveResponderWorker);
+    const liveConfig = { adminRoomId: ADMIN_ROOM_ID, modelSpec: env.DEFAULT_MODEL_SPEC };
+    await scheduler.schedule(
+      { type: 'event', predicate: { kind: 'dialogue', scopeType: 'party' } },
+      'live-responder',
+      liveConfig,
+    );
+    await scheduler.schedule(
+      { type: 'event', predicate: { kind: 'pose', scopeType: 'party' } },
+      'live-responder',
+      liveConfig,
+    );
+    logger.info({ modelSpec: env.DEFAULT_MODEL_SPEC }, 'live-responder registered');
+  } else {
+    logger.info('DEFAULT_MODEL_SPEC not set; live-responder not registered');
+  }
+
   await scheduler.start();
 
+  const app = createApp(events);
   const port = getPort();
   const server = serve({
     fetch: app.fetch,

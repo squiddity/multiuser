@@ -86,7 +86,7 @@ Split and merge are the delicate ones — they touch scope boundaries. Handled a
 The system acts in each platform via a bot identity.
 
 - **Principle of least privilege at the platform.** The bot holds the narrowest platform permissions sufficient for the admin capabilities we grant it — typically manage channels, manage roles, send messages, manage threads. Server-wide admin is avoided unless explicitly required.
-- **Authorization is layered.** Even if the bot *can* perform an action at the platform, our role system may refuse to invoke it. Platform permission is the outer bound; our capabilities are the inner gate.
+- **Authorization is layered.** Even if the bot _can_ perform an action at the platform, our role system may refuse to invoke it. Platform permission is the outer bound; our capabilities are the inner gate.
 - **Per-guild (Discord) / per-workspace isolation.** One deployment may serve multiple guilds; bot credentials and mappings are per-guild. Cross-guild data flow is never implicit.
 
 ## Discord v1 specifics

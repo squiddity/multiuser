@@ -15,6 +15,7 @@ const EnvSchema = z.object({
   EMBED_DIM: z.coerce.number().int().positive().default(1536),
   LONG_CONTENT_WARN_CHARS: z.coerce.number().int().positive().default(6000),
   DISCORD_BOT_TOKEN: z.string().optional(),
+  DEFAULT_MODEL_SPEC: z.string().optional(),
 });
 
 export type Env = z.infer<typeof EnvSchema>;

@@ -35,13 +35,11 @@ export async function loadAgentPrompt(
     }
 
     if (campaignId) {
-      const overrides = await retrieveByScopes(
-        [{ type: 'governance', roomId: campaignId }],
-        { kind: 'agent-prompt', limit: 1 },
-      );
-      const override = overrides.find(
-        (s) => s.fields?.agentId === agentId,
-      );
+      const overrides = await retrieveByScopes([{ type: 'governance', roomId: campaignId }], {
+        kind: 'agent-prompt',
+        limit: 1,
+      });
+      const override = overrides.find((s) => s.fields?.agentId === agentId);
       if (override) {
         return {
           content: override.content,
@@ -72,9 +70,7 @@ export function listAgentPrompts(): string[] {
   try {
     const agentsDir = join(CONTENT_DIR, 'agents');
     const files = readdirSync(agentsDir);
-    return files
-      .filter((f) => f.endsWith('.md'))
-      .map((f) => f.replace('.md', ''));
+    return files.filter((f) => f.endsWith('.md')).map((f) => f.replace('.md', ''));
   } catch {
     return [];
   }

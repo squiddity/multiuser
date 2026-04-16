@@ -17,12 +17,14 @@ Define the minimum viable consent and safety primitives for v1 and name the road
 A structured declaration made during the campaign bootstrap flow (see `world-authoring.md`), extending stage 3 or 4 of that flow.
 
 Fields:
+
 - **Lines** — content that will not appear in play. Hard exclusions.
 - **Veils** — content that may be referenced but not depicted on camera (fade to summary).
 - **Themes present** — content explicitly welcomed in the campaign (tonal signal, not a quota).
 - **Tone notes** — prose description of the desired emotional register.
 
 Properties:
+
 - Stored as statements in the `style` scope (alongside style / tone), read by every agent turn.
 - Editable at any time by the authoring role that owns the campaign; edits supersede with history preserved.
 - Visible to all participants in the campaign — no hidden safety rules.
@@ -39,6 +41,7 @@ Any participant may invoke at any time. Minimum command set:
 - `/unpause` — resumes narration. Available to any participant who can `/pause`.
 
 Properties:
+
 - Invocation is authorization-free within a room's participant set — the lowest-privilege player can pause or fade. This is intentional; safety tools must not require permission.
 - A reason is optional but may be supplied privately (ephemeral modal text visible only to participants with an appropriate role). Absence of a reason is always respected.
 - The agent does not debate, interrogate, or override these invocations. It acknowledges and complies.

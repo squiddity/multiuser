@@ -18,12 +18,12 @@ The central tension: **the agent must be globally consistent about the world, wh
 
 Memory is partitioned into concentric scopes. Reads are **scope-union**: a read within a party can see world + party + (optionally) character. Writes target exactly one scope.
 
-| Scope | Visibility | Example |
-|---|---|---|
-| **World canon** | All parties (via the agent) | "The city of Vhaeran sits on the Ember Coast." |
-| **Party experience** | One party only | "Party A met the blacksmith Joren and learned he fences stolen goods." |
-| **Character private** | One character only | "Only Lyra knows the password is 'moonfall'." |
-| **Session working set** | One session (ephemeral / compactable) | In-flight turn state, dice outcomes, initiative order. |
+| Scope                   | Visibility                            | Example                                                                |
+| ----------------------- | ------------------------------------- | ---------------------------------------------------------------------- |
+| **World canon**         | All parties (via the agent)           | "The city of Vhaeran sits on the Ember Coast."                         |
+| **Party experience**    | One party only                        | "Party A met the blacksmith Joren and learned he fences stolen goods." |
+| **Character private**   | One character only                    | "Only Lyra knows the password is 'moonfall'."                          |
+| **Session working set** | One session (ephemeral / compactable) | In-flight turn state, dice outcomes, initiative order.                 |
 
 An agent prompt for a given turn is assembled from a **scope filter** (world ∪ party ∪ active-character) plus retrieved items from each, never a global slurp.
 
@@ -32,7 +32,7 @@ An agent prompt for a given turn is assembled from a **scope filter** (world ∪
 The sharpest rule in the model. A fact can exist in two different states:
 
 - **Canon** — true in the world regardless of observation. The agent may reference it freely anywhere.
-- **Experience** — a party's knowledge of a canon fact (or of an invented detail). The agent may only narrate what a party has experienced *to that party*.
+- **Experience** — a party's knowledge of a canon fact (or of an invented detail). The agent may only narrate what a party has experienced _to that party_.
 
 When the agent invents a new detail mid-narration ("the blacksmith's left hand is scarred"), it is written as **party experience** by default. Promotion to **world canon** is an explicit step (see pipeline below). This keeps each party's discoveries theirs, while letting the world grow coherently.
 
@@ -49,6 +49,7 @@ Every statement is stored as its own record, not merely as a line in a transcrip
 - `embeddings` — one or more vector representations (see below)
 
 This enables:
+
 - **Citation** — the agent can point at the exact prior statement that grounds a claim.
 - **Retraction** — a DM override can supersede a statement without rewriting history.
 - **Replay / audit** — reconstruct any past prompt deterministically from statement ids.
@@ -72,7 +73,7 @@ Agents invent detail on the fly. Without structure, inventions either (a) contra
 
 1. **Invention** — agent writes a new fact as a statement in **party experience** scope, tagged `kind=invention`.
 2. **Reinforcement** — repeated, consistent use within the party solidifies it as party headcanon.
-3. **Canonization (explicit)** — a review step (automated heuristic, author-user, or DM role) promotes the fact to **world canon**. Promotion rewrites the scope of a *canonical* record; the original party statement remains as the provenance.
+3. **Canonization (explicit)** — a review step (automated heuristic, author-user, or DM role) promotes the fact to **world canon**. Promotion rewrites the scope of a _canonical_ record; the original party statement remains as the provenance.
 4. **Conflict detection** — before invention is accepted, the agent queries world canon for contradictions. A conflict triggers either (a) reuse of the existing canon, or (b) a branch requiring resolution.
 
 ## Consistency across parties
@@ -99,10 +100,10 @@ Character scope is not simply "the user's own data" — user and character are d
 
 Two queries express the binding:
 
-- `getActingCharacter(userId, roomId) → characterId | null` — the character the user is currently speaking *as* in this room. Drives retrieval narrowing and write attribution. Null means the user plays no character here.
+- `getActingCharacter(userId, roomId) → characterId | null` — the character the user is currently speaking _as_ in this room. Drives retrieval narrowing and write attribution. Null means the user plays no character here.
 - `getCharactersForUser(userId, roomId) → characterId[]` — every character this user may read private scope of (primary-owned + delegated). Used by UI surfaces (`/act-as` autocomplete, character-sheet picker) and by admin tools.
 
-Wildcard character patterns (`{type:'character'}` with no id) in a room's readSet are legitimate declarations — they say "this room may see character scope." The retrieval layer narrows them to the current user's *active* character at query time. A wildcard without an active character resolves to no rows; it never expands to all characters.
+Wildcard character patterns (`{type:'character'}` with no id) in a room's readSet are legitimate declarations — they say "this room may see character scope." The retrieval layer narrows them to the current user's _active_ character at query time. A wildcard without an active character resolves to no rows; it never expands to all characters.
 
 ### Acting-as
 
@@ -121,8 +122,8 @@ When user U acts as character C, the statement records `authorId = U` with `fiel
 - **v1** — implicit single character per user per party (the primary ownership grant). `getActingCharacter` returns that character; `getCharactersForUser` returns `[characterId]` or `[]`. No `/act-as` surface yet.
 - **Multi-character per user (deferred)** — a user may own or be delegated onto multiple characters in the same party or across parties. `/act-as <character>` switches the active character within a room. Reads are active-only by default; a user juggling characters sees exactly one character's private scope at a time (matches the per-character recognition model).
 - **Admin impersonation (deferred, two flavors)**:
-  - *Admin-as-character* — an admin or co-GM is delegated onto a PC or NPC and acts as that character. Cheap extension of the same mechanism; `authorId` is the admin, `asCharacter` is the PC. Audit trail intact.
-  - *Admin-as-user* — ghostwriting another human's messages. Rarer, ethically thornier. A separate capability (`impersonate:user`) with explicit disclosure rules; not in v1.
+  - _Admin-as-character_ — an admin or co-GM is delegated onto a PC or NPC and acts as that character. Cheap extension of the same mechanism; `authorId` is the admin, `asCharacter` is the PC. Audit trail intact.
+  - _Admin-as-user_ — ghostwriting another human's messages. Rarer, ethically thornier. A separate capability (`impersonate:user`) with explicit disclosure rules; not in v1.
 
 ### Leakage rule
 
