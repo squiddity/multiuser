@@ -23,6 +23,8 @@ jobs:
   unit:
     name: Unit tests
     runs-on: ubuntu-latest
+    env:
+      DATABASE_URL: postgres://multiuser:multiuser@localhost:5432/multiuser
     steps:
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v4
