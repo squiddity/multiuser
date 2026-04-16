@@ -5,6 +5,11 @@ on:
     branches: ['**']
   pull_request:
 
+permissions:
+  contents: read
+  checks: write
+  pull-requests: write
+
 jobs:
   lint:
     name: Typecheck & format
@@ -81,10 +86,11 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - run: pip install pytest httpx
       - run: pnpm test:api
-      - name: Upload test results
+      - name: Publish test results
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: dorny/test-reporter@v1
         with:
-          name: api-test-results
+          name: API Test Results
           path: test-results/api-results.xml
-          if-no-files-found: ignore
+          reporter: java-junit
+          fail-on-error: false
