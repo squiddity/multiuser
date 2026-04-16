@@ -79,7 +79,7 @@ jobs:
         with:
           python-version: '3.12'
       - run: pnpm install --frozen-lockfile
-      - run: pip install -e test-api/
+      - run: pip install pytest httpx
       - run: pnpm test:api
       - name: Upload test results
         if: always()
