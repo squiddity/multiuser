@@ -6,12 +6,14 @@ import { env } from '../config/env.js';
 import {
   getStatement,
   listByScope,
-  appendStatement,
   scopeParts,
   deleteStatement,
 } from '../store/statements.js';
-import { NewStatement, Statement } from '../core/statement.js';
+import { appendIndexAndEmit } from '../store/emit.js';
+import { NewStatement } from '../core/statement.js';
+import type { EventBus } from '../core/events.js';
 
+export function createApp(events: EventBus): Hono {
 const app = new Hono();
 
 app.use('*', cors());
@@ -33,10 +35,7 @@ app.post('/api/statements', async (c) => {
     return c.json({ error: 'invalid request', details: parsed.error.flatten() }, 400);
   }
   const input = parsed.data;
-  const id = await appendStatement({
-    ...input,
-    embedding: null,
-  });
+  const id = await appendIndexAndEmit(input, events);
   const created = await getStatement(id);
   if (!created) {
     return c.json({ error: 'failed to retrieve after creation' }, 500);
@@ -155,7 +154,8 @@ function toStatementResponse(row: any): any {
   };
 }
 
-export { app };
+  return app;
+}
 
 export function getPort(): number {
   return parseInt(process.env.API_PORT ?? '3000', 10);

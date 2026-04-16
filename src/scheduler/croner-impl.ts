@@ -83,7 +83,8 @@ export class CronerScheduler implements Scheduler {
     for (const entry of this.entries.values()) {
       if (entry.trigger.type !== 'event') continue;
       if (!matchesPredicate(event, entry.trigger.predicate)) continue;
-      this.fireNow(entry.workerName, entry.payload).catch((err) =>
+      const payload = { ...(entry.payload as Record<string, unknown>), ...event };
+      this.fireNow(entry.workerName, payload).catch((err) =>
         this.logger.error({ err, worker: entry.workerName }, 'worker failed from event trigger'),
       );
     }
