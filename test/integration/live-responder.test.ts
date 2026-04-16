@@ -44,16 +44,19 @@ beforeAll(async () => {
   await migrate();
   await seed();
 
-  await db.insert(roleGrants).values([
-    {
-      id: testGrantIds[0],
-      userId: PLAYER_USER,
-      roomId: PARTY_ROOM_ID,
-      roleId: PLAYER_ROLE_ID,
-      grantedBy: 'system',
-      precedence: 0,
-    },
-  ]).onConflictDoNothing();
+  await db
+    .insert(roleGrants)
+    .values([
+      {
+        id: testGrantIds[0],
+        userId: PLAYER_USER,
+        roomId: PARTY_ROOM_ID,
+        roleId: PLAYER_ROLE_ID,
+        grantedBy: 'system',
+        precedence: 0,
+      },
+    ])
+    .onConflictDoNothing();
 
   const embedder = new HashEmbedder();
   setEmbedder(embedder);
@@ -160,10 +163,7 @@ describe('integration: live-responder worker', () => {
 
     await new Promise((r) => setTimeout(r, 300));
 
-    const openQs = await db
-      .select()
-      .from(statements)
-      .where(eq(statements.kind, 'open-question'));
+    const openQs = await db.select().from(statements).where(eq(statements.kind, 'open-question'));
 
     const relevant = openQs.filter(
       (r) => r.scopeType === 'governance' && r.scopeKey === ADMIN_ROOM_ID,

@@ -88,7 +88,9 @@ describe('AgentBackedResolver', () => {
   it('passes model spec to resolveModel', async () => {
     mockGenerateText.mockResolvedValue({ text: mockResolveResultJSON });
 
-    const resolver = new AgentBackedResolver(makeConfig({ modelSpec: 'anthropic:claude-opus-4-6' }));
+    const resolver = new AgentBackedResolver(
+      makeConfig({ modelSpec: 'anthropic:claude-opus-4-6' }),
+    );
     await resolver.resolve(makeRequest());
 
     const { resolveModel } = await import('../../src/models/registry.js');
@@ -153,9 +155,7 @@ describe('AgentBackedResolver', () => {
     mockGenerateText.mockResolvedValue({ text: mockResolveResultJSON });
 
     const resolver = new AgentBackedResolver(makeConfig());
-    await resolver.resolve(
-      makeRequest({ modifiers: { advantage: true, circumstantial: [] } }),
-    );
+    await resolver.resolve(makeRequest({ modifiers: { advantage: true, circumstantial: [] } }));
 
     const callArgs = mockGenerateText.mock.calls[0]![0] as { system: string };
     expect(callArgs.system).toContain('advantage');
@@ -194,7 +194,11 @@ describe('AgentBackedResolver describeActions', () => {
           systemPrompt: DND5E_INSTRUCTIONS,
           actionMetadata: {
             stealth: { name: 'Stealth', label: 'Stealth (DEX)', kind: 'skill-check' as const },
-            athletics: { name: 'Athletics', label: 'Athletics (STR)', kind: 'skill-check' as const },
+            athletics: {
+              name: 'Athletics',
+              label: 'Athletics (STR)',
+              kind: 'skill-check' as const,
+            },
           },
         },
       }),

@@ -6,7 +6,7 @@ Define how users drive decisions, submit actions, view state, and answer governa
 
 ## UI goals
 
-1. **Narrative-first.** UI elements attach to narrative moments; they never stand alone as an app-like interface. A button appears on a narration message because it represents a choice *in that moment*.
+1. **Narrative-first.** UI elements attach to narrative moments; they never stand alone as an app-like interface. A button appears on a narration message because it represents a choice _in that moment_.
 2. **Structured-decision clarity.** When the agent presents a branch, options, or a required decision, the UI makes the structure legible at a glance — player doesn't need to parse prose to find their options.
 3. **Low-friction for repeated actions.** Rolls, skill checks, attacks, inventory use happen often; one-click beats retyping. Repeated actions surface as always-available buttons on relevant state embeds.
 4. **Personal vs. shared presentation.** Private state (a character's own stats, private knowledge, secret rolls) uses ephemeral surfaces; shared state (scene, party roster, canon lore) uses channel-visible surfaces.
@@ -50,6 +50,7 @@ Discord's custom ids are small strings the backend receives on interaction. We t
 ### Authorization at click time
 
 When an interaction arrives, the platform backend:
+
 1. Resolves the interacting user to a system user id via the mapping layer.
 2. Looks up the interaction spec by custom id.
 3. Checks whether the user holds the roles the spec requires in the originating room.
@@ -73,11 +74,12 @@ Any roll (explicit `/roll`, button-driven, mechanical-rules prompted) produces a
 
 ### NPC dialogue via webhooks
 
-When the agent speaks *as an NPC*, it uses a webhook with the NPC's name and portrait. The underlying statement is still authored by the agent and scope-tagged, but the platform rendering carries identity. For canon NPCs, the webhook identity is pulled from the entity store; for one-off inventions, a lightweight default identity is used until the NPC is canonized.
+When the agent speaks _as an NPC_, it uses a webhook with the NPC's name and portrait. The underlying statement is still authored by the agent and scope-tagged, but the platform rendering carries identity. For canon NPCs, the webhook identity is pulled from the entity store; for one-off inventions, a lightweight default identity is used until the NPC is canonized.
 
 ### Authoring-role decision UI
 
 Open-question records routed to an authoring role render as a structured message in that room:
+
 - Embed with the question subject, the candidate detail, and the blocking context.
 - Buttons: `Accept candidate`, `Reject`, `Edit in modal`, `Defer`.
 - For in-fiction authoring rooms (wizard cabal), the embed is styled per the in-tone rendering rules from `runtime-and-processing.md` — portent phrasing on the embed title and description, mechanical fields in a collapsed section.

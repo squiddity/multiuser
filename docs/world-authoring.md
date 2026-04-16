@@ -48,6 +48,7 @@ A single seed document typically produces both: structured entities extracted fr
 ### Provenance
 
 Every seed statement records:
+
 - `source` — file path, URL, or upload id.
 - `chunk` — location within the source (line range, section anchor, page).
 - `license` — the declared license of the source (see below).
@@ -74,7 +75,7 @@ When a fiction corpus is ingested, a dedicated **style extractor** agent reads a
 - Output is reviewed in the admin / planning conversation before it becomes active. Automatic acceptance would let a single corpus hijack the campaign's voice.
 - Style statements are read by every agent turn — narrator, briefing generator, media-gen worker (when that ships) — so voice remains consistent.
 
-The corpus itself is *also* retrievable as `world` lore, so concrete details from the source stay available alongside the extracted style.
+The corpus itself is _also_ retrievable as `world` lore, so concrete details from the source stay available alongside the extracted style.
 
 ## Bootstrap flow (standing up a campaign fast)
 
@@ -83,6 +84,7 @@ The target user journey: an admin arrives with a rules system, a fictional sourc
 ### Stage 1 — Declare inputs
 
 The admin specifies:
+
 - A rules system, by URL (e.g. `https://5esrd.com`) or uploaded document, with a license claim.
 - One or more fiction sources, by URL or upload, with license claims.
 - A campaign concept in one to three sentences ("Oz, a generation after Dorothy; the Emerald City has industrialized and the old magic is returning").
@@ -90,6 +92,7 @@ The admin specifies:
 ### Stage 2 — Ingest
 
 Ingester workers run in parallel:
+
 - Rulebook → `rules:<system>` scope; the Resolver for that system is instantiated and ready.
 - Fiction corpus → `world` scope (lore + structured entities for named characters, places, artifacts) + style extractor run over the corpus.
 - Campaign concept → held as an authored statement in the admin room, used as the frame for subsequent stages.
@@ -99,6 +102,7 @@ Progress is reported live in the planning room. Admin can proceed to the next st
 ### Stage 3 — Review & refine
 
 The world-author agent presents:
+
 - The structured entities extracted from the fiction, grouped by kind, with the admin able to edit, drop, merge, or promote to canonical via UI (see `ui-and-interactions.md`).
 - The proposed style statements with representative excerpts, editable inline.
 - A proposed initial setting anchored on the campaign concept — where the first party starts, what's in view, which source-fiction elements are present vs. altered vs. absent.
@@ -108,6 +112,7 @@ This stage is where **divergence from source** is declared: the campaign is seed
 ### Stage 4 — Seed the opening
 
 The world-author agent drafts:
+
 - One to three initial party-ready scenes (hooks, scene frames, starting NPCs).
 - A short author's-note statement describing the campaign's starting posture, readable by any GM or cabal role.
 - Optional house rules suggested from the campaign concept (e.g. "Oz-style magic: color-coded schools" becomes a proposed `rules:dnd5e:house` statement).

@@ -28,9 +28,7 @@ export class AgentBackedResolver implements ResolverInterface {
     this.retrieveTool = createRetrieveTool();
   }
 
-  async resolve(
-    req: ResolveRequestType,
-  ): Promise<ResolveResultType> {
+  async resolve(req: ResolveRequestType): Promise<ResolveResultType> {
     const model = resolveModel(this.config.modelSpec);
     const rulesScope = this.config.rulesScope;
 
@@ -70,7 +68,10 @@ export class AgentBackedResolver implements ResolverInterface {
       if (parsed.success) {
         return parsed.data;
       }
-      logger.warn({ result: textResult.text.substring(0, 500) }, 'resolver: failed to parse LLM response as ResolveResult');
+      logger.warn(
+        { result: textResult.text.substring(0, 500) },
+        'resolver: failed to parse LLM response as ResolveResult',
+      );
       throw new Error('Failed to parse resolver response');
     } catch (err) {
       logger.error({ err, req }, 'resolver: generateText failed');
@@ -85,23 +86,18 @@ export class AgentBackedResolver implements ResolverInterface {
     }
   }
 
-  async describeActions(
-    _actor: string,
-    _contextStatementIds: string[],
-  ): Promise<ActionSpecType[]> {
+  async describeActions(_actor: string, _contextStatementIds: string[]): Promise<ActionSpecType[]> {
     if (!this.config.instructions.actionMetadata) {
       return [];
     }
 
-    return Object.entries(this.config.instructions.actionMetadata).map(
-      ([, action]) => ({
-        name: action.name,
-        label: action.label,
-        kind: action.kind,
-        valid: true,
-        paramsSchema: {},
-      }),
-    );
+    return Object.entries(this.config.instructions.actionMetadata).map(([, action]) => ({
+      name: action.name,
+      label: action.label,
+      kind: action.kind,
+      valid: true,
+      paramsSchema: {},
+    }));
   }
 
   private buildSystemPrompt(
@@ -111,12 +107,15 @@ export class AgentBackedResolver implements ResolverInterface {
     let prompt = this.config.instructions.systemPrompt;
     prompt += '\n\n## Output Format\n';
     prompt += 'Return a valid JSON object with these fields:\n';
-    prompt += '- outcome: { result: "success" | "failure" | "crit-success" | "crit-failure" | "partial", margin?: number, degrees?: number }\n';
-    prompt += '- rolls: [{ dice: string, values: number[], modifier: number, total: number, purpose: string }]\n';
+    prompt +=
+      '- outcome: { result: "success" | "failure" | "crit-success" | "crit-failure" | "partial", margin?: number, degrees?: number }\n';
+    prompt +=
+      '- rolls: [{ dice: string, values: number[], modifier: number, total: number, purpose: string }]\n';
     prompt += '- effects: [{ kind: string, target?: string, fields: object }]\n';
     prompt += '- narrationHook: string\n';
     prompt += '- confidence: number between 0 and 1\n';
-    prompt += '- ruling?: { subject: string, reasoning: string, citations: string[], confidence: number }\n';
+    prompt +=
+      '- ruling?: { subject: string, reasoning: string, citations: string[], confidence: number }\n';
     prompt += '\n## Current Request\n';
     prompt += `Action: ${req.action.name}\n`;
     prompt += `Kind: ${req.kind}\n`;

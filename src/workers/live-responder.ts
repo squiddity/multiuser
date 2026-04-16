@@ -34,7 +34,10 @@ export const liveResponderWorker: Worker<LiveResponderPayload> = {
     }
 
     if (kind === 'command-query') {
-      ctx.logger.info({ id, roomId }, 'live-responder: mechanical action detected; resolver path not yet wired (task 9)');
+      ctx.logger.info(
+        { id, roomId },
+        'live-responder: mechanical action detected; resolver path not yet wired (task 9)',
+      );
     }
 
     const narrator = new Narrator({ modelSpec, adminRoomId });

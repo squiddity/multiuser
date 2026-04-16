@@ -12,9 +12,7 @@ export interface EmitAgentStatementInput {
   fields?: Record<string, unknown>;
 }
 
-export async function emitAgentStatement(
-  input: EmitAgentStatementInput,
-): Promise<string> {
+export async function emitAgentStatement(input: EmitAgentStatementInput): Promise<string> {
   const id = await appendStatement({
     scope: input.scope,
     kind: input.kind,

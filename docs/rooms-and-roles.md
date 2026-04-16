@@ -11,6 +11,7 @@ The generalization matters because realistic play has at least three room shapes
 ### Room
 
 A room is a conversational container with:
+
 - A stable identity.
 - A set of **members** (users), each holding one or more roles within this room.
 - A **scope binding** declaring which memory scopes this room reads and writes.
@@ -22,6 +23,7 @@ A room is not synonymous with a party. A party is the common case where the room
 ### Role
 
 A role is a named capability bundle. Capabilities are explicit and independently granted:
+
 - **Read capabilities** — which memory scopes may enter this role's prompt assembly.
 - **Write capabilities** — which scopes this role may author statements into.
 - **Tool capabilities** — which tools the role may invoke, and what scope those invocations inherit.
@@ -33,9 +35,10 @@ A user may hold multiple roles in one room (a GM who is also playing a character
 ### Scope binding
 
 A room's scope binding has three parts:
+
 - **Write target** — exactly one scope a member's statements are recorded into by default. A role may override to write elsewhere (e.g. a canonization action writes to world).
 - **Read set** — the scopes that may contribute to prompts for agent turns in this room. Read set is further narrowed per-role (a player's read set excludes other players' private character scope even though the room nominally reads from `character`).
-- **Emit set** — scopes this room *produces signal for* beyond its own writes: briefings, constraints, canon updates flowing outward. Emissions are first-class records, not side effects.
+- **Emit set** — scopes this room _produces signal for_ beyond its own writes: briefings, constraints, canon updates flowing outward. Emissions are first-class records, not side effects.
 
 ## Cross-room information flow
 
@@ -44,6 +47,7 @@ Rooms are not isolated islands — they feed each other through explicit, audita
 ### Briefings (inward to a privileged room)
 
 The agent periodically (or on demand) produces a **briefing**: a scope-respecting digest of activity in a set of source rooms, delivered into a target room whose role holders are authorized to receive it. Properties:
+
 - The briefing is itself a statement in the target room, with sources pointing back to the underlying statements.
 - The digest respects scope: if the target room should see outcomes but not dialogue, the digest is shaped accordingly.
 - Briefings can be pull (on request) or push (scheduled / triggered by thresholds).
@@ -51,6 +55,7 @@ The agent periodically (or on demand) produces a **briefing**: a scope-respectin
 ### Steering (outward from a privileged room)
 
 A privileged room (typically a GM room) emits **steering records**: decisions, new canon, plot constraints, NPC directives. These are not narration — they are structured inputs that shape future agent turns in downstream rooms. Properties:
+
 - Steering records are statements in the emitting room, but their emit-set routes them to the relevant scope (usually world canon or a specific party's constraints-scope).
 - Downstream rooms consume steering via their read set; the agent weighs them during prompt assembly.
 - A steering record can be probabilistic ("in the next session introduce a rumor about the cult") or hard ("the baron is revealed to be the traitor when the party reaches chapter 4").
@@ -145,6 +150,7 @@ The agent is a single actor that assumes different postures per room, determined
 - **Hybrid** in in-fiction GM rooms — both of the above, with explicit tagging of which mode each statement is in.
 
 Across all postures the agent must:
+
 - Refuse to surface information outside the current room's read set, even when asked.
 - Record which retrieved statements grounded each output (provenance for citation/retraction).
 - Distinguish `invention`, `canon-reference`, `briefing`, `steering`, and `mechanical` statement kinds.
@@ -160,7 +166,7 @@ Across all postures the agent must:
 
 - The scope types (world / party / character / session) in `memory-model.md` still hold. This document adds that **which scope a room reads and writes is a configuration, not a fixed pairing with the party scope.**
 - "Party" is the concrete v1 label for a room-bound experience scope. Additional named scopes (`meta:*`, `constraints:party:P`, `governance`) emerge from this generalization and should be added to the scope inventory as they appear.
-- The canonization pipeline in `memory-model.md` is the pipeline that a `gm` role's workflow capability *invokes*. The "who decides" answer is now: whichever role holds the canonize capability in the relevant room.
+- The canonization pipeline in `memory-model.md` is the pipeline that a `gm` role's workflow capability _invokes_. The "who decides" answer is now: whichever role holds the canonize capability in the relevant room.
 
 ## Open questions
 
@@ -169,5 +175,5 @@ Across all postures the agent must:
 - Room relationships are a DAG (no oversight/interception cycles); open question is the **merge rule** when a single lower room has multiple higher interceptors on the same flow — declared priority, role-level precedence, or last-writer-wins?
 - How are room lifecycles handled — archival, merging two parties, splitting a party — and what happens to their scope-bound statements?
 - Is there a meaningful "all GMs across the world" room, or is oversight always per-world-slice?
-- When a lower room is configured *aware* of an observer or interceptor above it, what exactly does it see — existence only, identity, the content of interventions, or a narrative-layer abstraction (e.g. "you feel watched")?
+- When a lower room is configured _aware_ of an observer or interceptor above it, what exactly does it see — existence only, identity, the content of interventions, or a narrative-layer abstraction (e.g. "you feel watched")?
 - Should interception hooks be declarable on arbitrary flow types in the future (e.g. on canonization events, on governance grants), or restricted to briefings and steering?

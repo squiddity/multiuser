@@ -107,7 +107,7 @@ beforeEach(() => {
 describe('integration: Narrator roundtrip', () => {
   it('narrator reads party scope context', async () => {
     const rows = await retrieveForUserRoom(PLAYER_USER, PARTY_ROOM_ID, { limit: 10 });
-    
+
     expect(rows.length).toBeGreaterThan(0);
     const hasParty = rows.some((r) => r.scopeType === 'party' && r.scopeKey === PARTY_ROOM_ID);
     expect(hasParty).toBe(true);
@@ -116,7 +116,7 @@ describe('integration: Narrator roundtrip', () => {
   it('narrator loads default prompt from file', async () => {
     const { loadAgentPrompt } = await import('../../src/store/content.js');
     const result = await loadAgentPrompt('narrator', null);
-    
+
     expect(result.content).toBeTruthy();
     expect(result.source).toBe('file');
     expect(result.agentId).toBe('narrator');
@@ -124,7 +124,10 @@ describe('integration: Narrator roundtrip', () => {
 
   it('narrator outputs valid narration from mock LLM', async () => {
     mockGenerateText.mockResolvedValue({
-      text: JSON.stringify({ kind: 'narration', content: 'The dragon roars, its voice shaking the mountains.' }),
+      text: JSON.stringify({
+        kind: 'narration',
+        content: 'The dragon roars, its voice shaking the mountains.',
+      }),
     });
 
     const { Narrator } = await import('../../src/agents/narrator.js');
@@ -160,7 +163,11 @@ describe('integration: Narrator roundtrip', () => {
       adminRoomId: ADMIN_ROOM_ID,
     });
 
-    const output = await narrator.compose(PARTY_ROOM_ID, PLAYER_USER, 'What does the dragon look like?');
+    const output = await narrator.compose(
+      PARTY_ROOM_ID,
+      PLAYER_USER,
+      'What does the dragon look like?',
+    );
 
     expect(output.kind).toBe('invention');
     expect(output.openQuestion).toBeDefined();
