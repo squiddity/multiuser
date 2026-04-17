@@ -1,12 +1,22 @@
 import { Hono } from 'hono';
 import { logger as honoLogger } from 'hono/logger';
 import { cors } from 'hono/cors';
+import { z } from 'zod';
 import { ping } from '../store/client.js';
 import { env } from '../config/env.js';
 import { getStatement, listByScope, scopeParts, deleteStatement } from '../store/statements.js';
 import { appendIndexAndEmit } from '../store/emit.js';
 import { NewStatement } from '../core/statement.js';
+import { canonizeOpenQuestion, CanonizeError } from '../store/canonize.js';
 import type { EventBus } from '../core/events.js';
+
+const CanonizeRequest = z.object({
+  userId: z.string().min(1),
+  openQuestionId: z.string().uuid(),
+  decision: z.enum(['promote', 'reject', 'supersede']),
+  rationale: z.string().optional(),
+  revisedCandidate: z.string().optional(),
+});
 
 export function createApp(events: EventBus): Hono {
   const app = new Hono();
@@ -94,6 +104,27 @@ export function createApp(events: EventBus): Hono {
       limit,
       offset,
     });
+  });
+
+  app.post('/api/rooms/:roomId/canonize', async (c) => {
+    const roomId = c.req.param('roomId');
+    const body = await c.req.json();
+    const parsed = CanonizeRequest.safeParse(body);
+    if (!parsed.success) {
+      return c.json({ error: 'invalid request', details: parsed.error.flatten() }, 400);
+    }
+    try {
+      const id = await canonizeOpenQuestion({ ...parsed.data, roomId }, events);
+      const statement = await getStatement(id);
+      if (!statement) return c.json({ error: 'failed to retrieve after creation' }, 500);
+      return c.json(toStatementResponse(statement), 201);
+    } catch (err) {
+      if (err instanceof CanonizeError) {
+        if (err.code === 'forbidden') return c.json({ error: err.message }, 403);
+        return c.json({ error: err.message }, 400);
+      }
+      throw err;
+    }
   });
 
   function toStatementResponse(row: any): any {
