@@ -8,7 +8,9 @@ import { logger } from '../config/logger.js';
 import { env } from '../config/env.js';
 
 let currentEmbedder: Embedder = new HashEmbedder();
-let currentBackend: SearchBackend = new PgvectorSearchBackend(currentEmbedder);
+// Lazily initialized to avoid a circular-dependency TDZ issue:
+// vectors → pgvector → retrieval → vectors (pgvector class not yet defined when cycle resolves)
+let currentBackend: SearchBackend | null = null;
 
 export function getEmbedder(): Embedder {
   return currentEmbedder;
@@ -19,6 +21,9 @@ export function setEmbedder(embedder: Embedder): void {
 }
 
 export function getBackend(): SearchBackend {
+  if (!currentBackend) {
+    currentBackend = new PgvectorSearchBackend(currentEmbedder);
+  }
   return currentBackend;
 }
 

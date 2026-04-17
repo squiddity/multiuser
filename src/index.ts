@@ -10,6 +10,7 @@ import { CronerScheduler } from './scheduler/croner-impl.js';
 import { EventBus } from './core/events.js';
 import { createApp, getPort } from './api/app.js';
 import { liveResponderWorker } from './workers/live-responder.js';
+import { openQuestionResolverWorker } from './workers/open-question-resolver.js';
 import { serve } from '@hono/node-server';
 
 const ADMIN_ROOM_ID = '22222222-2222-2222-2222-222222222222';
@@ -51,6 +52,14 @@ async function main(): Promise<void> {
   } else {
     logger.info('DEFAULT_MODEL_SPEC not set; live-responder not registered');
   }
+
+  workers.register(openQuestionResolverWorker);
+  await scheduler.schedule(
+    { type: 'event', predicate: { kind: 'authoring-decision', scopeType: 'governance' } },
+    'open-question-resolver',
+    {},
+  );
+  logger.info('open-question-resolver registered');
 
   await scheduler.start();
 
