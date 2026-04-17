@@ -421,6 +421,15 @@ Format:
 
 ---
 
+### D53. Lazy singleton initialization in vectors.ts
+
+- **Q** — `vectors.ts` instantiated `PgvectorSearchBackend` at module load time, which caused a `TypeError: PgvectorSearchBackend is not a constructor` when any test file imported `pgvector.ts` before `vectors.ts`. Root cause: `vectors.ts` → `pgvector.ts` → `retrieval.ts` → `vectors.ts` forms a circular dependency; the `PgvectorSearchBackend` class is in the temporal dead zone when the cycle resolves in the "wrong" direction.
+- **D** — `currentBackend` is initialized to `null` and lazily created on the first call to `getBackend()` via `new PgvectorSearchBackend(currentEmbedder)`. `setBackend()` still allows tests and boot code to override it.
+- **R** — Eliminates the module-load-time instantiation that triggered the TDZ failure. Runtime behavior is identical: the first caller of `getBackend()` (always after all modules are initialized) gets a fully-constructed backend. The cycle itself is left in place; breaking it would require moving `patternToSql` out of `retrieval.ts`, which is a larger refactor with no other benefit at this stage.
+- **S** — v1.
+
+---
+
 ## Remaining open items
 
 Items that survived this pass and should be worked as implementation proceeds:
