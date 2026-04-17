@@ -94,3 +94,14 @@ export async function getActiveGrantsForRoom(roomId: string): Promise<RoleGrantR
     precedence: r.precedence,
   }));
 }
+
+export async function userHasCapability(
+  userId: string,
+  roomId: string,
+  capability: string,
+): Promise<boolean> {
+  const grants = await getActiveGrantsForUserRoom(userId, roomId);
+  if (!grants.length) return false;
+  const roleRecords = await Promise.all(grants.map((g) => getRole(g.roleId)));
+  return roleRecords.some((r) => r !== null && r.capabilities.includes(capability));
+}

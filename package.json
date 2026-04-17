@@ -5,7 +5,8 @@
   "type": "module",
   "description": "Multi-user, multi-room agent-driven shared fiction platform (Discord-first)",
   "scripts": {
-    "dev": "tsx watch src/index.ts",
+    "dev": "tsx watch src/cli/harness.ts",
+    "serve": "tsx watch src/index.ts",
     "build": "tsc",
     "start": "node dist/index.js",
     "test": "vitest run test/unit test/smoke.test.ts",
