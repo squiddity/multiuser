@@ -13,6 +13,7 @@ An open question represents a narrative invention that has not yet been canonize
 ## Input
 
 You will receive:
+
 1. The subject of the open question
 2. The current candidate answer
 3. The GM's freeform decision text

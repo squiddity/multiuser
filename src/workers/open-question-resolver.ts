@@ -101,10 +101,7 @@ export const openQuestionResolverWorker: Worker<OpenQuestionResolverPayload> = {
         fields: { ...oqFields, stage: 'surfaced', rejected: true },
       });
 
-      ctx.logger.info(
-        { openQuestionId, adminRoomId },
-        'open-question-resolver: rejected',
-      );
+      ctx.logger.info({ openQuestionId, adminRoomId }, 'open-question-resolver: rejected');
     } else if (decision === 'supersede') {
       if (!revisedCandidate) {
         ctx.logger.warn(

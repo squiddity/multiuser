@@ -88,7 +88,10 @@ describe('integration: SteeringFormalizer agent', () => {
     const { SteeringFormalizer } = await import('../../src/agents/steering-formalizer.js');
     const formalizer = new SteeringFormalizer({ modelSpec: 'anthropic:claude-3-haiku-20240307' });
 
-    const oqId = await makeOpenQuestion('Dragon scar origin', 'The scar came from a wyvern attack.');
+    const oqId = await makeOpenQuestion(
+      'Dragon scar origin',
+      'The scar came from a wyvern attack.',
+    );
     const output = await formalizer.formalize(
       oqId,
       'Dragon scar origin',
@@ -181,9 +184,8 @@ describe('integration: SteeringFormalizer agent', () => {
 
 describe('integration: openQuestionResolverWorker', () => {
   it('promote: emits canon-reference to world + supersedes OQ as surfaced', async () => {
-    const { openQuestionResolverWorker } = await import(
-      '../../src/workers/open-question-resolver.js'
-    );
+    const { openQuestionResolverWorker } =
+      await import('../../src/workers/open-question-resolver.js');
 
     const oqId = await makeOpenQuestion('Dungeon origin', 'Built by dwarves in the Third Age.');
 
@@ -205,10 +207,7 @@ describe('integration: openQuestionResolverWorker', () => {
       { logger, now: () => new Date() },
     );
 
-    const worldRows = await db
-      .select()
-      .from(statements)
-      .where(eq(statements.scopeType, 'world'));
+    const worldRows = await db.select().from(statements).where(eq(statements.scopeType, 'world'));
 
     const canon = worldRows.find(
       (r) => r.kind === 'canon-reference' && Array.isArray(r.sources) && r.sources.includes(adId),
@@ -217,10 +216,7 @@ describe('integration: openQuestionResolverWorker', () => {
     expect(canon!.content).toBe('Built by dwarves in the Third Age.');
     testStatementIds.push(canon!.id);
 
-    const superseding = await db
-      .select()
-      .from(statements)
-      .where(eq(statements.supersedes, oqId));
+    const superseding = await db.select().from(statements).where(eq(statements.supersedes, oqId));
 
     expect(superseding).toHaveLength(1);
     expect((superseding[0]!.fields as Record<string, unknown>).stage).toBe('surfaced');
@@ -229,9 +225,8 @@ describe('integration: openQuestionResolverWorker', () => {
   });
 
   it('reject: supersedes OQ as surfaced with rejected:true, no world canon', async () => {
-    const { openQuestionResolverWorker } = await import(
-      '../../src/workers/open-question-resolver.js'
-    );
+    const { openQuestionResolverWorker } =
+      await import('../../src/workers/open-question-resolver.js');
 
     const oqId = await makeOpenQuestion('Castle age', 'The castle is 20 years old.');
 
@@ -253,10 +248,7 @@ describe('integration: openQuestionResolverWorker', () => {
       { logger, now: () => new Date() },
     );
 
-    const superseding = await db
-      .select()
-      .from(statements)
-      .where(eq(statements.supersedes, oqId));
+    const superseding = await db.select().from(statements).where(eq(statements.supersedes, oqId));
 
     expect(superseding).toHaveLength(1);
     expect((superseding[0]!.fields as Record<string, unknown>).stage).toBe('surfaced');
@@ -264,16 +256,13 @@ describe('integration: openQuestionResolverWorker', () => {
     testStatementIds.push(superseding[0]!.id);
 
     const worldRows = await db.select().from(statements).where(eq(statements.scopeType, 'world'));
-    const unrelated = worldRows.filter(
-      (r) => Array.isArray(r.sources) && r.sources.includes(adId),
-    );
+    const unrelated = worldRows.filter((r) => Array.isArray(r.sources) && r.sources.includes(adId));
     expect(unrelated).toHaveLength(0);
   });
 
   it('supersede: supersedes OQ with revisedCandidate, stage remains deferred', async () => {
-    const { openQuestionResolverWorker } = await import(
-      '../../src/workers/open-question-resolver.js'
-    );
+    const { openQuestionResolverWorker } =
+      await import('../../src/workers/open-question-resolver.js');
 
     const oqId = await makeOpenQuestion('Dragon name', 'The dragon is called Pyraxis.');
 
@@ -297,10 +286,7 @@ describe('integration: openQuestionResolverWorker', () => {
       { logger, now: () => new Date() },
     );
 
-    const superseding = await db
-      .select()
-      .from(statements)
-      .where(eq(statements.supersedes, oqId));
+    const superseding = await db.select().from(statements).where(eq(statements.supersedes, oqId));
 
     expect(superseding).toHaveLength(1);
     const newOq = superseding[0]!;
