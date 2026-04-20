@@ -16,6 +16,14 @@ const EnvSchema = z.object({
   LONG_CONTENT_WARN_CHARS: z.coerce.number().int().positive().default(6000),
   DISCORD_BOT_TOKEN: z.string().optional(),
   DEFAULT_MODEL_SPEC: z.string().optional(),
+  LOG_DB_NOTICES: z
+    .enum(['0', '1'])
+    .default('0')
+    .transform((v) => v === '1'),
+  LOG_LLM_INPUT: z
+    .enum(['0', '1'])
+    .default('0')
+    .transform((v) => v === '1'),
 });
 
 export type Env = z.infer<typeof EnvSchema>;

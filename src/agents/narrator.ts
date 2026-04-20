@@ -4,6 +4,7 @@ import { retrieveForUserRoom } from '../store/retrieval.js';
 import { emitAgentStatement, createOpenQuestion } from '../store/agents.js';
 import { loadAgentPrompt } from '../store/content.js';
 import { getRoom, getActiveGrantsForUserRoom } from '../store/rooms.js';
+import { env } from '../config/env.js';
 import { logger } from '../config/logger.js';
 import type { Scope } from '../core/statement.js';
 
@@ -36,12 +37,26 @@ export class Narrator {
     const prompt = await loadAgentPrompt('narrator', this.config.campaignId ?? null);
     const context = await this.buildContext(roomId, userId);
     const model = resolveModel(this.config.modelSpec);
+    const userPrompt = this.buildUserPrompt(context, recentContent);
+
+    if (env.LOG_LLM_INPUT) {
+      logger.info(
+        {
+          roomId,
+          userId,
+          modelSpec: this.config.modelSpec,
+          systemPrompt: prompt.content,
+          userPrompt,
+        },
+        'narrator: llm input',
+      );
+    }
 
     try {
       const result = await generateText({
         model,
         system: prompt.content,
-        prompt: this.buildUserPrompt(context, recentContent),
+        prompt: userPrompt,
       });
 
       const parsed = this.parseOutput(result.text);

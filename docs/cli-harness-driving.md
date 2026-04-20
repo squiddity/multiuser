@@ -31,22 +31,58 @@ Use:
 pnpm demo:cli
 ```
 
-This runs `scripts/drive-cli-demo.mjs`, which first clears prior statements in the demo scopes (`party-1` and `admin-1`) so `/ls` starts clean, then launches the harness and executes a short end-to-end flow:
+By default the demo driver sets:
+
+- `LOG_DB_NOTICES=0` for the spawned CLI process (suppresses noisy Postgres NOTICE output)
+- `LOG_LLM_INPUT=1` for the spawned CLI process (prints narrator system + user prompt payload before each model call)
+
+This runs `scripts/drive-cli-demo.mjs`, which first clears prior statements in the demo scopes (`party-1` and `admin-1`), seeds one governance open question for canonization, then launches the harness and executes a short end-to-end flow:
 
 1. `help`
 2. `/ls`
-3. `/say ...`
+3. `/narrate ...`
 4. `/ls`
 5. `room admin-1`
 6. `/ls`
-7. `exit`
+7. `/canonize <seeded-oq-id> promote`
+8. `/ls`
+9. `room party-1`
+10. `/say "Who does the sigil on the north gate belong to?"`
+11. `/ls` (after response delay)
+12. `exit`
 
 The script mirrors child stdout/stderr to the parent terminal so the full interaction remains visible.
+
+At the end, it performs a lightweight qualitative assessment by reading recent statements:
+
+- confirms a promoted `canon-reference` exists in world scope
+- prints the latest narrator answer after the recall question
+- marks the run `PASS` when the answer mentions "Ashen Cartographers" (otherwise `REVIEW`)
+
+This is intentionally heuristic and is meant for rapid demo feedback, not strict evaluation.
+
+## Operational notes
+
+- Model-provider failures (rate limit, insufficient credits, transient transport) can cause fallback narrator output even when state plumbing is correct.
+- Treat these as infrastructure/provider issues for demo reporting, not automatic context-handling failures.
+- For reproducible runs, keep `DEFAULT_MODEL_SPEC` stable and log LLM input (`DEMO_LOG_LLM_INPUT=1`).
 
 To preserve prior demo statements, run with reset disabled:
 
 ```bash
 DEMO_CLI_RESET=0 pnpm demo:cli
+```
+
+To show DB NOTICE logs during demo setup and runtime:
+
+```bash
+DEMO_SHOW_DB_NOTICES=1 pnpm demo:cli
+```
+
+To disable LLM input logging during demo:
+
+```bash
+DEMO_LOG_LLM_INPUT=0 pnpm demo:cli
 ```
 
 ## Anti-pattern to avoid

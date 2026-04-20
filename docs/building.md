@@ -76,12 +76,19 @@ For automated demos of the interactive harness (`src/cli/harness.ts`), use:
 pnpm demo:cli
 ```
 
-This uses a child-process driver that keeps stdin open and sends commands incrementally, and resets prior statements in the demo scopes before running so the first `/ls` is clean.
+This uses a child-process driver that keeps stdin open and sends commands incrementally, resets prior statements in the demo scopes before running so the first `/ls` is clean, seeds an open question so `/canonize` is exercised, then asks a follow-up `/say` recall question in the player room to demonstrate model interaction with persisted canon.
 
 To skip reset and keep prior demo data:
 
 ```bash
 DEMO_CLI_RESET=0 pnpm demo:cli
+```
+
+Useful demo toggles:
+
+```bash
+DEMO_SHOW_DB_NOTICES=1 pnpm demo:cli   # show Postgres NOTICE logs
+DEMO_LOG_LLM_INPUT=0 pnpm demo:cli     # hide narrator prompt payload logs
 ```
 
 Do not drive the harness by piping a finite input stream into `pnpm dev`; that can close readline early and raise `ERR_USE_AFTER_CLOSE`.
@@ -165,10 +172,16 @@ Black-box API tests that run against the full stack in Docker. The tests are Pyt
 
 ### Prerequisites (host)
 
-- Python 3.12+ with `pytest` and `httpx`
+- Python 3.12+
 - Docker + Docker Compose
 
-Recommended setup (works on PEP-668/externally-managed Python installs):
+`pnpm test:api` now auto-bootstrap installs Python test dependencies in a local virtualenv when needed.
+
+- Default venv path: `.venv-api-tests`
+- Override interpreter: `PYTHON_BIN=/path/to/python3 pnpm test:api`
+- Override venv path: `API_TEST_VENV=/custom/path pnpm test:api`
+
+Manual setup is still supported (and useful if you want to re-use an existing environment):
 
 ```bash
 python3 -m venv .venv
@@ -176,15 +189,15 @@ python3 -m venv .venv
 pip install pytest httpx
 ```
 
-> If your distro blocks global `pip install` (for example Arch), use the venv flow above.
+> This avoids PEP-668 / externally-managed Python issues on distros such as Arch.
 
 ### Running the full suite
 
 ```bash
-# if using a venv, activate it first so `pytest` is on PATH
-. .venv/bin/activate
 pnpm test:api
 ```
+
+If `pytest`/`httpx` are missing, the script creates `.venv-api-tests` automatically and installs them there.
 
 This script (`scripts/api-test.sh`) does the following:
 

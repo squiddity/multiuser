@@ -128,6 +128,25 @@ async function handleSay(events: EventBus, text: string): Promise<void> {
   );
 }
 
+async function handleNarrate(events: EventBus, text: string): Promise<void> {
+  if (!text.trim()) {
+    printLine('  usage: /narrate <text>');
+    return;
+  }
+
+  await appendIndexAndEmit(
+    {
+      scope: currentRoom.writeScope,
+      kind: 'narration',
+      authorType: 'agent',
+      authorId: 'narrator',
+      content: text.trim(),
+      icOoc: 'ic',
+    },
+    events,
+  );
+}
+
 async function handleCanonize(events: EventBus, args: string[]): Promise<void> {
   const [oqId, decision, ...rest] = args;
   if (!oqId || !decision) {
@@ -186,6 +205,7 @@ function printHelp(): void {
       '  commands:',
       '    room <name>                              switch room (party-1, admin-1)',
       '    /say <text>                              emit dialogue as current user',
+      '    /narrate <text>                          emit narration as narrator',
       '    /canonize <oq-id> promote|reject|..     decide an open question',
       '    /ls                                      list recent statements',
       '    help                                     show this',
@@ -277,6 +297,8 @@ async function main(): Promise<void> {
         handleRoom(rest);
       } else if (cmd === '/say') {
         await handleSay(events, rest.join(' '));
+      } else if (cmd === '/narrate') {
+        await handleNarrate(events, rest.join(' '));
       } else if (cmd === '/canonize') {
         await handleCanonize(events, rest);
       } else if (cmd === '/ls') {

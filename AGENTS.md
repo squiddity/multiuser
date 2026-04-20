@@ -11,10 +11,14 @@
 
 ## Running tests
 
+- **Pre-push minimum gate**: run `pnpm typecheck` and `pnpm test` before every push.
 - **Unit tests** (no DB): `pnpm test` or `npx vitest run`
 - **Integration tests** (require Postgres): `pnpm test:integration` or `npx vitest run test/integration`
   - Start Postgres first: `docker compose -f docker/compose.yml up -d postgres`
   - Tests self-migrate and clean up. Safe to re-run.
+- **Hermetic API tests**: `pnpm test:api`
+  - Script auto-creates `.venv-api-tests` and installs `pytest`/`httpx` when missing.
+  - Optional overrides: `PYTHON_BIN=/path/to/python3` and `API_TEST_VENV=/custom/path`.
 - **Type check**: `npx tsc --noEmit`
 - **Format**: `npx prettier --write .` (fix) or `npx prettier --check .` (check)
 - **All CI**: typecheck, unit tests, integration tests, format check
@@ -24,7 +28,7 @@
 @docs/building.md
 @docs/decisions.md
 @docs/implementation.md
-@docs/milestones/0001-vertical-slice.md
+@docs/milestones/0002-stateful-llm-evals-and-extraction.md
 
 ## On-demand docs (read when relevant)
 
@@ -39,3 +43,9 @@
 - `docs/mud-precedents.md` — MUD/tabletop conventions adopted, roadmap, non-goals.
 - `docs/consent-and-safety.md` — v1 safety primitives, capability integration, policy.
 - `docs/cli-harness-driving.md` — reliable automation contract for driving the interactive CLI harness.
+- `docs/evals/scorecard-schema.md` — stub machine-readable demo scorecard contract for milestone 0002.
+- `docs/milestones/README.md` — milestone status index and sequencing.
+- `docs/milestones/0001-vertical-slice.md` — completed baseline vertical slice and deferred-item record.
+- `docs/milestones/0002-stateful-llm-evals-and-extraction.md` — current milestone for briefing + steering context workflows.
+- `docs/milestones/0003-discord-integration-validation.md` — Discord adapter integration and behavior validation plan.
+- `docs/milestones/0004-rpg-mechanics-command-surface.md` — deferred mechanics and command-surface roadmap.

@@ -419,6 +419,34 @@ Format:
 - **R** — An admin should be able to provide a new rulebook (e.g. PF2e, FitD) and get resolver behavior by creating instructions markdown, not by writing code. Hardcoded per-system logic couples agent behavior to engine code and makes adding systems expensive. The instructions-as-data pattern keeps the resolver generic. Multiple implementation strategies share the same interface, so per-kind dispatch is internal to the implementation and callers never change.
 - **S** — v1.
 
+### D53. Next milestone focus after vertical slice
+
+- **Q** — what is the immediate roadmap target after the vertical slice is stable?
+- **D** — Milestone 0002 focuses on admin/player context handling: fully implementing briefing generation and steering workflows so guidance flows reliably between party and governance rooms.
+- **R** — The vertical slice proved basic pipeline mechanics. The next product risk is whether human admins can steer ongoing play effectively through structured context loops.
+- **S** — next milestone.
+
+### D54. Post-0002 milestone ordering
+
+- **Q** — what follows once briefing + steering loops are stable?
+- **D** — Milestone 0003 focuses on Discord adapter integration and validating that prior milestone behaviors hold in real chat UX.
+- **R** — Channel/role mappings, interaction UX, and message rendering can alter behavior in practice; this needs dedicated validation before expanding feature breadth.
+- **S** — roadmap.
+
+### D55. Deferred mechanics and safety command surface
+
+- **Q** — where do deferred mechanics dispatch and safety command items from 0001 go?
+- **D** — They move to Milestone 0004 (RPG mechanics and command surface), including mechanical resolver dispatch (`command-query`), `/roll`, and deferred `/pause`/`/unpause`/`/fade` command enforcement.
+- **R** — Keeping 0001 focused on core narrative-governance flow reduced scope risk. Grouping these deferred items into a dedicated mechanics milestone keeps implementation and testing coherent.
+- **S** — roadmap.
+
+### D56. Active steering precedence
+
+- **Q** — if multiple steering statements are present, which one is treated as active first during narrator context assembly?
+- **D** — Only `status=active` steering statements are considered. Active steering is ordered newest-first by statement creation time; superseded/revoked statements are excluded.
+- **R** — This keeps precedence deterministic and easy to audit while preserving a straightforward override model for admins.
+- **S** — v1.
+
 ---
 
 ## Remaining open items
