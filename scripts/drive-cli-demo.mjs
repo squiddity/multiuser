@@ -17,7 +17,9 @@ const logLlmInput = process.env.DEMO_LOG_LLM_INPUT !== '0';
 function createSql(databaseUrl) {
   return postgres(databaseUrl, {
     max: 1,
-    onnotice: showDbNotices ? (notice) => process.stdout.write(`[db-notice] ${notice.message}\n`) : () => {},
+    onnotice: showDbNotices
+      ? (notice) => process.stdout.write(`[db-notice] ${notice.message}\n`)
+      : () => {},
   });
 }
 
@@ -61,7 +63,9 @@ async function resetDemoScopes() {
          or (scope_type = 'governance' and scope_key = ${ADMIN_ROOM_ID})
          or (scope_type = 'world' and scope_key is null and kind = 'canon-reference' and author_id = 'steering-formalizer')
     `;
-    process.stdout.write(`[demo-driver] reset complete: removed ${result.count ?? 0} statement(s)\n`);
+    process.stdout.write(
+      `[demo-driver] reset complete: removed ${result.count ?? 0} statement(s)\n`,
+    );
   } finally {
     await sql.end({ timeout: 5 });
   }
@@ -227,6 +231,8 @@ async function main() {
 }
 
 main().catch((err) => {
-  process.stderr.write(`[demo-driver] fatal: ${err instanceof Error ? err.message : String(err)}\n`);
+  process.stderr.write(
+    `[demo-driver] fatal: ${err instanceof Error ? err.message : String(err)}\n`,
+  );
   process.exit(1);
 });
