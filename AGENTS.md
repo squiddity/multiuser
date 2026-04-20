@@ -38,3 +38,4 @@
 - `docs/world-authoring.md` — ingestion pipeline, bootstrap flow, seed vs. play-invented canon.
 - `docs/mud-precedents.md` — MUD/tabletop conventions adopted, roadmap, non-goals.
 - `docs/consent-and-safety.md` — v1 safety primitives, capability integration, policy.
+- `docs/cli-harness-driving.md` — reliable automation contract for driving the interactive CLI harness.

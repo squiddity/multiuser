@@ -6,6 +6,7 @@
   "description": "Multi-user, multi-room agent-driven shared fiction platform (Discord-first)",
   "scripts": {
     "dev": "tsx watch src/cli/harness.ts",
+    "demo:cli": "node scripts/drive-cli-demo.mjs",
     "serve": "tsx watch src/index.ts",
     "build": "tsc",
     "start": "node dist/index.js",

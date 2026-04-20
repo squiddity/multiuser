@@ -68,6 +68,26 @@ pnpm dev
 
 The dev server (`tsx watch src/index.ts`) auto-runs the runtime smoke test on boot in development mode.
 
+## CLI harness demo driving
+
+For automated demos of the interactive harness (`src/cli/harness.ts`), use:
+
+```bash
+pnpm demo:cli
+```
+
+This uses a child-process driver that keeps stdin open and sends commands incrementally, and resets prior statements in the demo scopes before running so the first `/ls` is clean.
+
+To skip reset and keep prior demo data:
+
+```bash
+DEMO_CLI_RESET=0 pnpm demo:cli
+```
+
+Do not drive the harness by piping a finite input stream into `pnpm dev`; that can close readline early and raise `ERR_USE_AFTER_CLOSE`.
+
+See `docs/cli-harness-driving.md` for the interaction contract and rationale.
+
 ## Tests
 
 ### Unit tests (no DB required)
