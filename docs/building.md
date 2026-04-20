@@ -6,6 +6,13 @@
 - pnpm 9+
 - Docker + Docker Compose
 
+If `pnpm` is missing on a fresh machine/session:
+
+```bash
+npm install -g pnpm@9.15.0
+pnpm -v
+```
+
 ## Install
 
 ```bash
@@ -138,15 +145,24 @@ Black-box API tests that run against the full stack in Docker. The tests are Pyt
 
 ### Prerequisites (host)
 
-- Python 3.12+ with `pytest` and `httpx`:
-  ```bash
-  pip install pytest httpx
-  ```
+- Python 3.12+ with `pytest` and `httpx`
 - Docker + Docker Compose
+
+Recommended setup (works on PEP-668/externally-managed Python installs):
+
+```bash
+python3 -m venv .venv
+. .venv/bin/activate
+pip install pytest httpx
+```
+
+> If your distro blocks global `pip install` (for example Arch), use the venv flow above.
 
 ### Running the full suite
 
 ```bash
+# if using a venv, activate it first so `pytest` is on PATH
+. .venv/bin/activate
 pnpm test:api
 ```
 
@@ -197,7 +213,8 @@ Tests are pure HTTP calls — they import nothing from `src/`. If the API contra
 A passing CI run should include:
 
 1. `pnpm typecheck` — no type errors
-2. `pnpm test` — all unit + integration tests pass
-3. `pnpm format:check` — code is formatted
-4. `pnpm test:api` — hermetic API tests pass against Docker stack
-5. `docker compose -f docker/compose.yml build app` — Docker build succeeds
+2. `pnpm test` — unit + smoke tests pass
+3. `pnpm test:integration` — integration tests pass (Postgres required)
+4. `pnpm format:check` — code is formatted
+5. `pnpm test:api` — hermetic API tests pass against Docker stack
+6. `docker compose -f docker/compose.yml build app` — Docker build succeeds
