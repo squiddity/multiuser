@@ -11,13 +11,11 @@ import { createOpenQuestion, emitAgentStatement } from '../../src/store/agents.j
 import { logger } from '../../src/config/logger.js';
 import type { Scope } from '../../src/core/statement.js';
 
-vi.mock('../../src/models/registry.js', () => ({
-  resolveModel: vi.fn(() => ({ modelId: 'test:model' })),
-}));
-
-const mockGenerateText = vi.fn();
-vi.mock('ai', () => ({
-  generateText: (...args: unknown[]) => mockGenerateText(...args),
+const mockLlmGenerate = vi.fn();
+vi.mock('../../src/models/pi-runtime.js', () => ({
+  createPiAiLlmRuntime: vi.fn(() => ({
+    generate: (...args: unknown[]) => mockLlmGenerate(...args),
+  })),
 }));
 
 const ADMIN_ROOM_ID = '22222222-2222-2222-2222-222222222222';
@@ -63,7 +61,7 @@ afterAll(async () => {
 });
 
 beforeEach(() => {
-  mockGenerateText.mockClear();
+  mockLlmGenerate.mockClear();
 });
 
 async function makeOpenQuestion(subject: string, candidate: string): Promise<string> {
@@ -78,7 +76,7 @@ async function makeOpenQuestion(subject: string, candidate: string): Promise<str
 
 describe('integration: SteeringFormalizer agent', () => {
   it('formalize() parses a promote response from mocked LLM', async () => {
-    mockGenerateText.mockResolvedValueOnce({
+    mockLlmGenerate.mockResolvedValueOnce({
       text: JSON.stringify({
         decision: 'promote',
         rationale: 'The candidate is a strong fit for world canon.',
@@ -105,7 +103,7 @@ describe('integration: SteeringFormalizer agent', () => {
   });
 
   it('formalize() parses a reject response from mocked LLM', async () => {
-    mockGenerateText.mockResolvedValueOnce({
+    mockLlmGenerate.mockResolvedValueOnce({
       text: JSON.stringify({
         decision: 'reject',
         rationale: 'This contradicts established lore.',
@@ -129,7 +127,7 @@ describe('integration: SteeringFormalizer agent', () => {
   });
 
   it('formalize() parses a supersede response with revisedCandidate', async () => {
-    mockGenerateText.mockResolvedValueOnce({
+    mockLlmGenerate.mockResolvedValueOnce({
       text: JSON.stringify({
         decision: 'supersede',
         rationale: 'Close but needs revision.',

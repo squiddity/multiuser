@@ -12,13 +12,11 @@ import { eq } from 'drizzle-orm';
 import type { SearchBackend } from '../../src/core/search.js';
 import type { Scope } from '../../src/core/statement.js';
 
-vi.mock('../../src/models/registry.js', () => ({
-  resolveModel: vi.fn(() => ({ modelId: 'test:model' })),
-}));
-
-const mockGenerateText = vi.fn();
-vi.mock('ai', () => ({
-  generateText: (...args: unknown[]) => mockGenerateText(...args),
+const mockLlmGenerate = vi.fn();
+vi.mock('../../src/models/pi-runtime.js', () => ({
+  createPiAiLlmRuntime: vi.fn(() => ({
+    generate: (...args: unknown[]) => mockLlmGenerate(...args),
+  })),
 }));
 
 const PARTY_ROOM_ID = '11111111-1111-1111-1111-111111111111';
@@ -101,7 +99,7 @@ afterAll(async () => {
 });
 
 beforeEach(() => {
-  mockGenerateText.mockClear();
+  mockLlmGenerate.mockClear();
 });
 
 describe('integration: Narrator roundtrip', () => {
@@ -123,7 +121,7 @@ describe('integration: Narrator roundtrip', () => {
   });
 
   it('narrator outputs valid narration from mock LLM', async () => {
-    mockGenerateText.mockResolvedValue({
+    mockLlmGenerate.mockResolvedValue({
       text: JSON.stringify({
         kind: 'narration',
         content: 'The dragon roars, its voice shaking the mountains.',
@@ -144,7 +142,7 @@ describe('integration: Narrator roundtrip', () => {
   });
 
   it('narrator outputs invention with openQuestion from mock LLM', async () => {
-    mockGenerateText.mockResolvedValue({
+    mockLlmGenerate.mockResolvedValue({
       text: JSON.stringify({
         kind: 'invention',
         content: 'The dragon has a scarred left eye.',
@@ -176,7 +174,7 @@ describe('integration: Narrator roundtrip', () => {
   });
 
   it('narrator emits statements including open-question for invention', async () => {
-    mockGenerateText.mockResolvedValue({
+    mockLlmGenerate.mockResolvedValue({
       text: JSON.stringify({
         kind: 'invention',
         content: 'The dragon has a scarred eye.',

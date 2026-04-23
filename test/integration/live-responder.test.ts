@@ -15,22 +15,18 @@ import { roleGrants, statements } from '../../src/store/schema.js';
 import { eq, inArray } from 'drizzle-orm';
 import type { Scope } from '../../src/core/statement.js';
 
-vi.mock('../../src/models/registry.js', () => ({
-  resolveModel: vi.fn(() => ({ modelId: 'mock' })),
-}));
-
-vi.mock('ai', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('ai')>();
-  return {
-    ...actual,
-    generateText: vi.fn().mockResolvedValue({
-      text: JSON.stringify({
-        kind: 'narration',
-        content: 'The party hears footsteps echo through the dungeon corridor.',
-      }),
-    }),
-  };
+const mockLlmGenerate = vi.fn().mockResolvedValue({
+  text: JSON.stringify({
+    kind: 'narration',
+    content: 'The party hears footsteps echo through the dungeon corridor.',
+  }),
 });
+
+vi.mock('../../src/models/pi-runtime.js', () => ({
+  createPiAiLlmRuntime: vi.fn(() => ({
+    generate: (...args: unknown[]) => mockLlmGenerate(...args),
+  })),
+}));
 
 const PARTY_ROOM_ID = '11111111-1111-1111-1111-111111111111';
 const ADMIN_ROOM_ID = '22222222-2222-2222-2222-222222222222';
@@ -123,8 +119,7 @@ describe('integration: live-responder worker', () => {
   });
 
   it('narrator emits an invention and open-question for novel content', async () => {
-    const { generateText } = await import('ai');
-    vi.mocked(generateText).mockResolvedValueOnce({
+    mockLlmGenerate.mockResolvedValueOnce({
       text: JSON.stringify({
         kind: 'invention',
         content: 'A mysterious rune glows on the far wall — its origin unknown.',
@@ -134,7 +129,7 @@ describe('integration: live-responder worker', () => {
           routedTo: ADMIN_ROOM_ID,
         },
       }),
-    } as any);
+    });
 
     const bus = new EventBus();
     const reg = new WorkerRegistry();
