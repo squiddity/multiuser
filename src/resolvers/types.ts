@@ -1,4 +1,6 @@
 import { z } from 'zod';
+import type { LlmRuntime } from '../core/llm-runtime.js';
+import type { StatementStore } from '../core/statement-store.js';
 
 export const ResolverInstructions = z.object({
   systemPrompt: z.string(),
@@ -23,7 +25,7 @@ export const ResolverInstructions = z.object({
 });
 export type ResolverInstructions = z.infer<typeof ResolverInstructions>;
 
-export const AgentBackedResolverConfig = z.object({
+export const AgentBackedResolverConfigSchema = z.object({
   systemId: z.string().min(1),
   modelSpec: z.string(),
   instructions: ResolverInstructions,
@@ -35,6 +37,10 @@ export const AgentBackedResolverConfig = z.object({
     })
     .optional(),
 });
-export type AgentBackedResolverConfig = z.infer<typeof AgentBackedResolverConfig>;
 
-export type ResolverRulesScope = z.infer<typeof AgentBackedResolverConfig>['rulesScope'];
+export type AgentBackedResolverConfig = z.infer<typeof AgentBackedResolverConfigSchema> & {
+  llmRuntime?: LlmRuntime;
+  statementStore?: StatementStore;
+};
+
+export type ResolverRulesScope = AgentBackedResolverConfig['rulesScope'];

@@ -7,12 +7,12 @@ Fix the concrete stack, component topology, and code layout for v1. Everything a
 ## Stack
 
 - **Language: TypeScript** (Node 20+). Single language end-to-end; Discord ecosystem fit.
-- **Agent runtime: Mastra.** Use its **workflow engine**, **agent + tool primitives**, and **evals**. Do not use its memory as source of truth — our statement store is authoritative; Mastra memory is a caching layer for active conversation context.
-- **Domain types live in our own modules.** Mastra imports us, not the other way around for core nouns. Runtime swap remains possible in principle.
+- **Agent runtime: pi SDK components (`@mariozechner/pi-ai`, `@mariozechner/pi-agent-core`) behind local interfaces.** Use pi for model/provider resolution, tool-call loop execution, streaming events, and per-turn usage/cost accounting.
+- **Domain types and canonical state remain local.** The statement store is authoritative; pi runtime state is reconstructable/ephemeral. Runtime swap remains possible in principle.
 - **Storage: PostgreSQL 16+** with the **pgvector** extension. JSONB for flexible statement fields.
 - **DB access: Drizzle** (typed query builder, migrations, pairs well with Zod).
 - **Discord: discord.js v14+**. Gateway, interactions, webhooks, REST.
-- **Validation: Zod** for every boundary: statement schemas, worker payloads, Resolver I/O, tool definitions, config, env.
+- **Validation: Zod now, TypeBox target.** Existing boundaries use Zod; migration planning targets TypeBox for schema portability and closer alignment with pi ecosystem tooling.
 - **Scheduler (tier 0): `croner`** + in-process worker registry behind a `Scheduler` interface. Keeps Temporal / Inngest swap open.
 - **Observability: `pino`** structured logs; OpenTelemetry added at tier 2.
 - **Testing: Vitest** (unit + integration). Fixtures live as seed statements in a dedicated `eval` scope.
@@ -25,13 +25,14 @@ Fix the concrete stack, component topology, and code layout for v1. Everything a
 - **Supported providers**: OpenRouter (`@openrouter/ai-sdk-provider`), Anthropic (`@ai-sdk/anthropic`), OpenAI (`@ai-sdk/openai`). Keys are optional — only providers referenced by registered agent specs must be configured; `resolveModel` throws at resolution time if the required key is missing.
 - **Embeddings**: OpenAI `text-embedding-3-small` (1536 dim) initially; swap when cost/privacy pressure warrants.
 
-## How Mastra fits
+## How pi SDK components fit
 
-- **Workflows** host multi-step processes: bootstrap stages, briefing generation, canonization review, reconciler batches, safety-pause handling. Each workflow is a typed Mastra workflow that reads/writes through our statement store functions.
-- **Agents** host the narrator, world-author, style-extractor, steering-formalizer, consistency-auditor, open-question-resolver, and per-system Resolvers. Each is a Mastra agent with a Zod-declared system prompt, tool set, and output schema.
-- **Tools** wrap domain operations: `retrieve(scope-filter, query)`, `roll(dice-spec)`, `emit_statement(schema, fields)`, `propose_canonization(candidate)`. Tool registration is Zod-typed.
-- **Evals** run against the `eval` scope, producing eval statements tied to model/prompt versions.
-- **Memory is used sparingly** — only as an active-turn conversation cache. After the turn, canonical records land in the statement store; Mastra memory is discardable.
+- **`pi-ai`** provides provider/model abstraction, streaming primitives, cross-provider context continuity, and usage/cost metadata.
+- **`pi-agent-core`** provides the turn loop, tool execution lifecycle events, steering/follow-up controls, and session-aware request metadata.
+- **Local interfaces (`LlmRuntime`, `StatementStore`)** isolate worker and agent code from concrete implementations.
+- **Statement store stays authoritative.** Canonical memory, scopes, provenance, and governance decisions remain in Postgres through our own store contracts.
+- **Markdown instructions are first-class configuration artifacts.** Agent behavior and resolver policy live in markdown data where possible; security and scope invariants stay in code.
+- **Future option:** selective adoption of `pi-coding-agent` remains open (especially session compaction hooks/extensions) without changing canonical-store authority.
 
 ## Component topology
 
@@ -69,13 +70,13 @@ Fix the concrete stack, component topology, and code layout for v1. Everything a
 └──────┬────────────────┘
        │
 ┌──────┴──────────────────┐   ┌──────────────────────┐
-│  Scheduler interface    │   │  Mastra agents /     │
-│  Tier 0: croner impl    │   │  workflows / evals   │
-│  Tier 3 (later): Temporal│  │                      │
+│  Scheduler interface    │   │  pi-ai + pi-agent-   │
+│  Tier 0: croner impl    │   │  core runtime layer  │
+│  Tier 3 (later): Temporal│  │  (via LlmRuntime)    │
 └──────────────────────────┘   └──────────────────────┘
 ```
 
-Every arrow is Zod-typed.
+Every arrow is schema-typed (Zod now, TypeBox migration planned).
 
 ## Directory layout
 
@@ -89,6 +90,8 @@ src/
     resolver.ts         # ResolveRequest/Result contracts
     worker.ts           # Worker interface + registry type
     scheduler.ts        # Scheduler interface
+    llm-runtime.ts      # LLM runtime abstraction boundary
+    statement-store.ts  # Canonical statement-store abstraction boundary
   store/                # Postgres + pgvector
     schema.ts           # Drizzle schema
     statements.ts       # append, read, scope-filtered query
@@ -106,6 +109,7 @@ src/
     smoke.ts             # boot-time substrate check
     entities.ts           # structured entity ops
     mappings.ts           # room↔channel, role↔discord role, user↔discord user
+    statement-store.ts    # Postgres StatementStore adapter
     migrations/
   adapters/
     platform.ts         # PlatformAdapter interface
@@ -137,7 +141,7 @@ src/
     dnd5e/
       instructions.md     # skill-check agent instructions (data artifact)
       actions.ts          # describeActions — reads instruction metadata
-  agents/               # Mastra agent + workflow specs
+  agents/               # role-focused agent implementations
     narrator.ts
     world-author.ts
     style-extractor.ts

@@ -89,8 +89,8 @@ Format:
 ### D10. Agent runtime
 
 - **Q** — Claude Agent SDK, LangGraph, Mastra, or Letta?
-- **D** — Mastra, with our domain types owning the vocabulary.
-- **R** — Workflow engine, agent/tool primitives, and evals earn their keep; Mastra is runtime plumbing, not our noun system.
+- **D** — Use pi SDK components (`@mariozechner/pi-ai` + `@mariozechner/pi-agent-core`) behind local interfaces, with our domain types owning the vocabulary.
+- **R** — pi provides lean model/provider abstraction, tool-loop/session primitives, and usage/cost telemetry without forcing us to adopt an opinionated application memory model. This keeps runtime plumbing replaceable while preserving our statement-store-first architecture.
 - **S** — resolved.
 
 ### D11. Storage
@@ -368,7 +368,7 @@ Format:
 
 ### D46. Process topology
 
-- **Q** — single Mastra process or split per agent role?
+- **Q** — single runtime process or split per agent role?
 - **D** — Single process for v1. Split when load or isolation demands.
 - **R** — Matches tier-0 deployment posture.
 - **S** — v1.
@@ -384,7 +384,7 @@ Format:
 
 - **Q** — which LLM(s) do agents use, and how is the choice expressed?
 - **D** — Each agent definition declares its model directly as a provider-prefixed spec (`"<provider>:<slug>"`), resolved by `resolveModel` in `src/models/registry.ts`. No logical aliases ("cheap"/"premium"). Supported providers: OpenRouter (`@openrouter/ai-sdk-provider`), Anthropic (`@ai-sdk/anthropic`), OpenAI (`@ai-sdk/openai`); keys are optional and only required when an agent references that provider. Embeddings via OpenAI `text-embedding-3-small` (1536 dim) per D44.
-- **R** — Agent roles have genuinely different model needs (e.g. a scheduled consistency reviewer wants a long-context premium model for daily digests; a chat narrator wants a fast, cheap one). Encoding that at the agent definition keeps the choice next to the behavior it affects rather than buried behind a shared env alias. Mastra consumes AI SDK providers natively, so the spec composes cleanly.
+- **R** — Agent roles have genuinely different model needs (e.g. a scheduled consistency reviewer wants a long-context premium model for daily digests; a chat narrator wants a fast, cheap one). Encoding that at the agent definition keeps the choice next to the behavior it affects rather than buried behind a shared env alias. pi-ai model resolution composes cleanly with this declaration style.
 - **S** — v1.
 
 ### D48. Secrets management
@@ -446,6 +446,27 @@ Format:
 - **D** — Only `status=active` steering statements are considered. Active steering is ordered newest-first by statement creation time; superseded/revoked statements are excluded.
 - **R** — This keeps precedence deterministic and easy to audit while preserving a straightforward override model for admins.
 - **S** — v1.
+
+### D57. Canonical store abstraction boundary
+
+- **Q** — should canonical statement/session truth be bound directly to Postgres modules, or hidden behind a contract that allows alternate backends?
+- **D** — Canonical truth must sit behind an explicit `StatementStore` interface. Postgres remains default, but workers/agents consume the interface only.
+- **R** — Scope safety, provenance, and governance semantics are domain-level contracts. Treating storage as an adapter keeps room for alternate backends (including graph/vector hybrids) without rewriting worker logic.
+- **S** — v1.
+
+### D58. `pi-coding-agent` adoption posture
+
+- **Q** — should we adopt `pi-coding-agent` session runtime now, or defer?
+- **D** — Defer full adoption for now. Keep `pi-ai` + `pi-agent-core` as the runtime base and revisit `pi-coding-agent` selectively (especially compaction hooks/extensions) once our own session/store contracts stabilize.
+- **R** — Full `pi-coding-agent` integration is compelling for extension and compaction ergonomics, but we do not want to blur authoritative canonical memory with convenience transcript/session facilities.
+- **S** — reevaluate after milestone 0002 stabilization.
+
+### D59. Validation schema direction (Zod → TypeBox)
+
+- **Q** — stay on Zod indefinitely, or migrate toward TypeBox?
+- **D** — Plan a full migration to TypeBox in phases, while preserving behavior and contracts during transition.
+- **R** — TypeBox gives serializable schemas that compose well with pi tooling and distributed/runtime-boundary contracts. Migration is non-trivial, so we phase it behind adapters and parity tests.
+- **S** — roadmap.
 
 ---
 

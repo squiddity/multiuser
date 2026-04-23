@@ -1,12 +1,11 @@
-import { generateText } from 'ai';
-import { resolveModel } from '../models/registry.js';
-import { retrieveForUserRoom } from '../store/retrieval.js';
-import { emitAgentStatement, createOpenQuestion } from '../store/agents.js';
 import { loadAgentPrompt } from '../store/content.js';
-import { getRoom, getActiveGrantsForUserRoom } from '../store/rooms.js';
+import { getRoom } from '../store/rooms.js';
+import { createPiAiLlmRuntime } from '../models/pi-runtime.js';
+import { createStatementStore } from '../store/statement-store.js';
 import { env } from '../config/env.js';
 import { logger } from '../config/logger.js';
-import type { Scope } from '../core/statement.js';
+import type { LlmRuntime } from '../core/llm-runtime.js';
+import type { StatementStore } from '../core/statement-store.js';
 
 export type NarratorOutputKind = 'narration' | 'pose' | 'invention';
 
@@ -24,19 +23,24 @@ export interface NarratorConfig {
   modelSpec: string;
   campaignId?: string | null;
   adminRoomId?: string | null;
+  llmRuntime?: LlmRuntime;
+  statementStore?: StatementStore;
 }
 
 export class Narrator {
   private readonly config: NarratorConfig;
+  private readonly llmRuntime: LlmRuntime;
+  private readonly statementStore: StatementStore;
 
   constructor(config: NarratorConfig) {
     this.config = config;
+    this.llmRuntime = config.llmRuntime ?? createPiAiLlmRuntime();
+    this.statementStore = config.statementStore ?? createStatementStore();
   }
 
   async compose(roomId: string, userId: string, recentContent?: string): Promise<NarratorOutput> {
     const prompt = await loadAgentPrompt('narrator', this.config.campaignId ?? null);
     const context = await this.buildContext(roomId, userId);
-    const model = resolveModel(this.config.modelSpec);
     const userPrompt = this.buildUserPrompt(context, recentContent);
 
     if (env.LOG_LLM_INPUT) {
@@ -53,9 +57,9 @@ export class Narrator {
     }
 
     try {
-      const result = await generateText({
-        model,
-        system: prompt.content,
+      const result = await this.llmRuntime.generate({
+        modelSpec: this.config.modelSpec,
+        systemPrompt: prompt.content,
         prompt: userPrompt,
       });
 
@@ -77,7 +81,7 @@ export class Narrator {
 
     const ids: string[] = [];
 
-    const statementId = await emitAgentStatement({
+    const statementId = await this.statementStore.emitAgentStatement({
       scope: room.binding.writeTarget,
       kind: output.kind,
       content: output.content,
@@ -87,7 +91,7 @@ export class Narrator {
     ids.push(statementId);
 
     if (output.kind === 'invention' && output.openQuestion && this.config.adminRoomId) {
-      const oqId = await createOpenQuestion(
+      const oqId = await this.statementStore.createOpenQuestion(
         { type: 'governance', roomId: this.config.adminRoomId },
         {
           subject: output.openQuestion.subject,
@@ -106,7 +110,7 @@ export class Narrator {
     roomId: string,
     userId: string,
   ): Promise<{ statements: string; worldCanon: string; partyExperience: string }> {
-    const rows = await retrieveForUserRoom(userId, roomId, { limit: 20 });
+    const rows = await this.statementStore.retrieveForUserRoom(userId, roomId, { limit: 20 });
 
     const worldCanon = rows
       .filter((r) => r.scopeType === 'world')

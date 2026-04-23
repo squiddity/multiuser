@@ -1,9 +1,10 @@
-import { generateText } from 'ai';
-import { resolveModel } from '../models/registry.js';
 import { loadAgentPrompt } from '../store/content.js';
-import { emitAgentStatement } from '../store/agents.js';
+import { createPiAiLlmRuntime } from '../models/pi-runtime.js';
+import { createStatementStore } from '../store/statement-store.js';
 import { logger } from '../config/logger.js';
 import type { Scope } from '../core/statement.js';
+import type { LlmRuntime } from '../core/llm-runtime.js';
+import type { StatementStore } from '../core/statement-store.js';
 
 export type SteeringDecision = 'promote' | 'reject' | 'supersede';
 
@@ -16,13 +17,19 @@ export interface SteeringFormalizerOutput {
 export interface SteeringFormalizerConfig {
   modelSpec: string;
   campaignId?: string | null;
+  llmRuntime?: LlmRuntime;
+  statementStore?: StatementStore;
 }
 
 export class SteeringFormalizer {
   private readonly config: SteeringFormalizerConfig;
+  private readonly llmRuntime: LlmRuntime;
+  private readonly statementStore: StatementStore;
 
   constructor(config: SteeringFormalizerConfig) {
     this.config = config;
+    this.llmRuntime = config.llmRuntime ?? createPiAiLlmRuntime();
+    this.statementStore = config.statementStore ?? createStatementStore();
   }
 
   async formalize(
@@ -32,12 +39,10 @@ export class SteeringFormalizer {
     freeformText: string,
   ): Promise<SteeringFormalizerOutput> {
     const prompt = await loadAgentPrompt('steering-formalizer', this.config.campaignId ?? null);
-    const model = resolveModel(this.config.modelSpec);
-
     try {
-      const result = await generateText({
-        model,
-        system: prompt.content,
+      const result = await this.llmRuntime.generate({
+        modelSpec: this.config.modelSpec,
+        systemPrompt: prompt.content,
         prompt: this.buildUserPrompt(subject, candidate, freeformText),
       });
 
@@ -58,7 +63,7 @@ export class SteeringFormalizer {
     authorId: string,
     sources?: string[],
   ): Promise<string> {
-    const id = await emitAgentStatement({
+    const id = await this.statementStore.emitAgentStatement({
       scope,
       kind: 'authoring-decision',
       content: `Decision: ${output.decision}. ${output.rationale}`,

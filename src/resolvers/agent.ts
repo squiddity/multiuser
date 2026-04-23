@@ -7,36 +7,40 @@ import {
   type ResolveResult as ResolveResultType,
   type ActionSpec as ActionSpecType,
 } from '../core/resolver.js';
-import { generateText } from 'ai';
-import { resolveModel } from '../models/registry.js';
 import { createRollTool } from './tools/roll.js';
 import { createRetrieveTool } from './tools/retrieve.js';
-import { retrieveByScopes } from '../store/retrieval.js';
+import { createAiSdkLlmRuntime } from '../models/ai-sdk-runtime.js';
+import { createStatementStore } from '../store/statement-store.js';
 import type { AgentBackedResolverConfig } from './types.js';
 import { logger } from '../config/logger.js';
+import type { LlmRuntime } from '../core/llm-runtime.js';
+import type { StatementStore } from '../core/statement-store.js';
 
 export class AgentBackedResolver implements ResolverInterface {
   readonly system: string;
   private readonly config: AgentBackedResolverConfig;
   private readonly rollTool;
   private readonly retrieveTool;
+  private readonly llmRuntime: LlmRuntime;
+  private readonly statementStore: StatementStore;
 
   constructor(config: AgentBackedResolverConfig) {
     this.system = config.systemId;
     this.config = config;
     this.rollTool = createRollTool();
     this.retrieveTool = createRetrieveTool();
+    this.llmRuntime = config.llmRuntime ?? createAiSdkLlmRuntime();
+    this.statementStore = config.statementStore ?? createStatementStore();
   }
 
   async resolve(req: ResolveRequestType): Promise<ResolveResultType> {
-    const model = resolveModel(this.config.modelSpec);
     const rulesScope = this.config.rulesScope;
 
     let contextStatements: { id: string; content: string }[] = [];
     if (rulesScope && req.contextStatements.length > 0) {
       try {
         const scope = { type: 'rules' as const, system: this.system, variant: 'base' as const };
-        const results = await retrieveByScopes([scope], {
+        const results = await this.statementStore.retrieveByScopes([scope], {
           limit: 10,
         });
         contextStatements = results.map((r) => ({
@@ -54,9 +58,9 @@ export class AgentBackedResolver implements ResolverInterface {
     const systemPrompt = this.buildSystemPrompt(req, contextStatements);
 
     try {
-      const textResult = await generateText({
-        model,
-        system: systemPrompt,
+      const textResult = await this.llmRuntime.generate({
+        modelSpec: this.config.modelSpec,
+        systemPrompt: systemPrompt,
         tools: {
           roll: this.rollTool,
           retrieve: this.retrieveTool,
