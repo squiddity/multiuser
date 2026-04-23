@@ -1,4 +1,4 @@
-import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import { inArray } from 'drizzle-orm';
 import { db, close } from '../../src/store/client.js';
 import { migrate } from '../../src/store/migrate.js';
@@ -11,6 +11,18 @@ import { WorkerRegistry, type WorkerContext } from '../../src/core/worker.js';
 import { CronerScheduler } from '../../src/scheduler/croner-impl.js';
 import { logger } from '../../src/config/logger.js';
 import { briefingGeneratorWorker } from '../../src/workers/briefing-generator.js';
+
+const mockGenerateText = vi.fn().mockResolvedValue({
+  text: 'Briefing: The party investigated suspicious tracks near a cave. Potential encounter ahead; GM should prepare an ambush beat.',
+});
+
+vi.mock('../../src/models/registry.js', () => ({
+  resolveModel: vi.fn(() => ({ modelId: 'mock:model' })),
+}));
+
+vi.mock('ai', () => ({
+  generateText: (...args: unknown[]) => mockGenerateText(...args),
+}));
 
 const PARTY_ROOM_ID = '11111111-1111-1111-1111-111111111111';
 const ADMIN_ROOM_ID = '22222222-2222-2222-2222-222222222222';
@@ -30,6 +42,10 @@ describe('briefing-generator', () => {
   let workers: WorkerRegistry;
   let scheduler: CronerScheduler;
   let ctx: WorkerContext;
+
+  beforeEach(() => {
+    mockGenerateText.mockClear();
+  });
 
   beforeAll(async () => {
     await migrate();
