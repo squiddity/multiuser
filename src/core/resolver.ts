@@ -1,7 +1,8 @@
 import { Type, type Static } from 'typebox';
+import { NonEmptyString, UUID } from '../lib/schema-primitives.js';
 import { withValidation } from '../lib/typebox.js';
 
-const ResolveKind = Type.Union([
+export const ResolveKindSchema = Type.Union([
   Type.Literal('attack'),
   Type.Literal('saving-throw'),
   Type.Literal('skill-check'),
@@ -11,12 +12,13 @@ const ResolveKind = Type.Union([
   Type.Literal('freeform'),
   Type.Literal('initiative'),
 ]);
+export type ResolveKind = Static<typeof ResolveKindSchema>;
 
 const ResolveRequestSchema = Type.Object({
-  system: Type.String({ minLength: 1 }),
-  kind: ResolveKind,
-  actor: Type.String({ format: 'uuid' }),
-  target: Type.Optional(Type.String({ format: 'uuid' })),
+  system: NonEmptyString,
+  kind: ResolveKindSchema,
+  actor: UUID,
+  target: Type.Optional(UUID),
   action: Type.Object({
     name: Type.String(),
     params: Type.Optional(Type.Record(Type.String(), Type.Unknown(), { default: {} })),
@@ -30,7 +32,7 @@ const ResolveRequestSchema = Type.Object({
       circumstantial: Type.Optional(Type.Array(Type.String(), { default: [] })),
     }),
   ),
-  contextStatements: Type.Optional(Type.Array(Type.String({ format: 'uuid' }), { default: [] })),
+  contextStatements: Type.Optional(Type.Array(UUID, { default: [] })),
   rollPolicy: Type.Optional(
     Type.Union(
       [Type.Literal('roll-now'), Type.Literal('use-provided'), Type.Literal('caller-rolls')],
@@ -64,7 +66,7 @@ const EffectSchema = Type.Object({
     Type.Literal('resource'),
     Type.Literal('custom'),
   ]),
-  target: Type.Optional(Type.String({ format: 'uuid' })),
+  target: Type.Optional(UUID),
   fields: Type.Optional(Type.Record(Type.String(), Type.Unknown(), { default: {} })),
 });
 export const Effect = withValidation(EffectSchema);
@@ -103,7 +105,7 @@ export type ResolveResult = Static<typeof ResolveResultSchema>;
 const ActionSpecSchema = Type.Object({
   name: Type.String(),
   label: Type.String(),
-  kind: ResolveKind,
+  kind: ResolveKindSchema,
   paramsSchema: Type.Optional(Type.Record(Type.String(), Type.Unknown(), { default: {} })),
   valid: Type.Optional(Type.Boolean({ default: true })),
   reason: Type.Optional(Type.String()),

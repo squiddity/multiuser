@@ -1,4 +1,5 @@
 import { Type, type Static } from 'typebox';
+import { RulesVariant, UUID } from '../../lib/schema-primitives.js';
 import { withValidation } from '../../lib/typebox.js';
 import type { LlmToolDefinition } from '../../core/llm-runtime.js';
 import { retrieveByScopes } from '../../store/retrieval.js';
@@ -6,19 +7,17 @@ import type { Scope } from '../../core/statement.js';
 
 const ScopeSelectorSchema = Type.Union([
   Type.Object({ type: Type.Literal('world') }),
-  Type.Object({ type: Type.Literal('party'), partyId: Type.String({ format: 'uuid' }) }),
-  Type.Object({ type: Type.Literal('character'), characterId: Type.String({ format: 'uuid' }) }),
-  Type.Object({ type: Type.Literal('session'), sessionId: Type.String({ format: 'uuid' }) }),
-  Type.Object({ type: Type.Literal('meta'), roomId: Type.String({ format: 'uuid' }) }),
+  Type.Object({ type: Type.Literal('party'), partyId: UUID }),
+  Type.Object({ type: Type.Literal('character'), characterId: UUID }),
+  Type.Object({ type: Type.Literal('session'), sessionId: UUID }),
+  Type.Object({ type: Type.Literal('meta'), roomId: UUID }),
   Type.Object({
     type: Type.Literal('rules'),
     system: Type.String(),
-    variant: Type.Optional(
-      Type.Union([Type.Literal('base'), Type.Literal('house')], { default: 'base' }),
-    ),
+    variant: Type.Optional(RulesVariant),
   }),
-  Type.Object({ type: Type.Literal('style'), worldId: Type.String({ format: 'uuid' }) }),
-  Type.Object({ type: Type.Literal('governance'), roomId: Type.String({ format: 'uuid' }) }),
+  Type.Object({ type: Type.Literal('style'), worldId: UUID }),
+  Type.Object({ type: Type.Literal('governance'), roomId: UUID }),
   Type.Object({ type: Type.Literal('mapping') }),
   Type.Object({ type: Type.Literal('eval') }),
 ]);

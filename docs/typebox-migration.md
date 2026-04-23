@@ -22,6 +22,7 @@ Migration completed for v1 codepaths:
 
 - Runtime validation and schema contracts use TypeBox 1.x.
 - Worker payloads, resolver contracts, tool parameter schemas, statement/scope/room contracts, API body validation, and env validation are all TypeBox-backed.
+- Local parse/safeParse compatibility helpers live in `src/lib/typebox.ts` to preserve existing boundary ergonomics while using TypeBox validators.
 - Direct Zod dependency has been removed from project runtime code.
 
 ## Phases

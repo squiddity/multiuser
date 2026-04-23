@@ -40,5 +40,6 @@ If introduced, it should remain a runtime/session convenience layer and not repl
 
 - Keep model selection declarative per agent role.
 - Keep tool policies and scope checks at the domain boundary.
-- The pi runtime adapter executes tool-enabled turns through `pi-agent-core` and maps local tool definitions into runtime tool contracts.
+- Tool-enabled turns run through `pi-agent-core` (`Agent`) instead of app-managed orchestration.
+- Local tool definitions are adapted into runtime `AgentTool` contracts; argument validation happens at the schema boundary before execution.
 - Persist usage/cost telemetry in first-class records tied to statement/turn IDs.

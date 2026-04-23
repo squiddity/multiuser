@@ -1,4 +1,5 @@
 import { Type, type Static } from 'typebox';
+import { DateTime, NonEmptyString, RulesVariant, UUID } from '../lib/schema-primitives.js';
 import { withValidation } from '../lib/typebox.js';
 
 const StatementKindSchema = Type.Union([
@@ -29,22 +30,20 @@ export type StatementKind = Static<typeof StatementKindSchema>;
 
 const ScopeSchema = Type.Union([
   Type.Object({ type: Type.Literal('world') }),
-  Type.Object({ type: Type.Literal('party'), partyId: Type.String({ format: 'uuid' }) }),
-  Type.Object({ type: Type.Literal('character'), characterId: Type.String({ format: 'uuid' }) }),
-  Type.Object({ type: Type.Literal('session'), sessionId: Type.String({ format: 'uuid' }) }),
-  Type.Object({ type: Type.Literal('meta'), roomId: Type.String({ format: 'uuid' }) }),
+  Type.Object({ type: Type.Literal('party'), partyId: UUID }),
+  Type.Object({ type: Type.Literal('character'), characterId: UUID }),
+  Type.Object({ type: Type.Literal('session'), sessionId: UUID }),
+  Type.Object({ type: Type.Literal('meta'), roomId: UUID }),
   Type.Object({
     type: Type.Literal('rules'),
-    system: Type.String({ minLength: 1 }),
-    variant: Type.Optional(
-      Type.Union([Type.Literal('base'), Type.Literal('house')], { default: 'base' }),
-    ),
+    system: NonEmptyString,
+    variant: Type.Optional(RulesVariant),
   }),
   Type.Object({
     type: Type.Literal('style'),
-    worldId: Type.Optional(Type.String({ format: 'uuid' })),
+    worldId: Type.Optional(UUID),
   }),
-  Type.Object({ type: Type.Literal('governance'), roomId: Type.String({ format: 'uuid' }) }),
+  Type.Object({ type: Type.Literal('governance'), roomId: UUID }),
   Type.Object({ type: Type.Literal('mapping') }),
   Type.Object({ type: Type.Literal('eval') }),
 ]);
@@ -52,15 +51,15 @@ export const Scope = withValidation(ScopeSchema);
 export type Scope = Static<typeof ScopeSchema>;
 
 const StatementSchema = Type.Object({
-  id: Type.String({ format: 'uuid' }),
+  id: UUID,
   scope: ScopeSchema,
   kind: StatementKindSchema,
   authorType: Type.Union([Type.Literal('user'), Type.Literal('agent'), Type.Literal('system')]),
-  authorId: Type.String({ minLength: 1 }),
+  authorId: NonEmptyString,
   icOoc: Type.Optional(Type.Union([Type.Literal('ic'), Type.Literal('ooc')])),
-  createdAt: Type.String({ format: 'date-time' }),
-  supersedes: Type.Optional(Type.String({ format: 'uuid' })),
-  sources: Type.Optional(Type.Array(Type.String({ format: 'uuid' }), { default: [] })),
+  createdAt: DateTime,
+  supersedes: Type.Optional(UUID),
+  sources: Type.Optional(Type.Array(UUID, { default: [] })),
   content: Type.String(),
   fields: Type.Optional(Type.Record(Type.String(), Type.Unknown(), { default: {} })),
   embedding: Type.Optional(Type.Array(Type.Number())),
@@ -72,10 +71,10 @@ const NewStatementSchema = Type.Object({
   scope: ScopeSchema,
   kind: StatementKindSchema,
   authorType: Type.Union([Type.Literal('user'), Type.Literal('agent'), Type.Literal('system')]),
-  authorId: Type.String({ minLength: 1 }),
+  authorId: NonEmptyString,
   icOoc: Type.Optional(Type.Union([Type.Literal('ic'), Type.Literal('ooc')])),
-  supersedes: Type.Optional(Type.String({ format: 'uuid' })),
-  sources: Type.Optional(Type.Array(Type.String({ format: 'uuid' }), { default: [] })),
+  supersedes: Type.Optional(UUID),
+  sources: Type.Optional(Type.Array(UUID, { default: [] })),
   content: Type.String(),
   fields: Type.Optional(Type.Record(Type.String(), Type.Unknown(), { default: {} })),
 });

@@ -468,6 +468,13 @@ Format:
 - **R** — TypeBox gives serializable schemas that compose well with pi tooling and distributed/runtime-boundary contracts while remaining suitable for local runtime validation.
 - **S** — complete (v1 codepaths).
 
+### D60. Tool execution runtime
+
+- **Q** — should tool-enabled turns be app-managed, or use the runtime's native tool loop?
+- **D** — Use `pi-agent-core` for tool-enabled turns. The local `LlmRuntime` maps tool definitions into `AgentTool` contracts and delegates tool-call orchestration (validation/execution/event ordering) to `pi-agent-core`.
+- **R** — This removes duplicated loop logic from app code, aligns tool semantics with the runtime's event model, and keeps worker/resolver code behind a stable local interface.
+- **S** — complete (v1 codepaths).
+
 ---
 
 ## Remaining open items
