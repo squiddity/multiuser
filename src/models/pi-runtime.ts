@@ -21,26 +21,35 @@ function extractText(message: Awaited<ReturnType<typeof complete>>): string {
     .join('');
 }
 
-/**
- * pi-ai runtime adapter for non-tool turns.
- *
- * Tool-enabled turns continue to use AI SDK runtime until tool definitions are
- * migrated to pi-agent-core tool contracts.
- */
 export class PiAiLlmRuntime implements LlmRuntime {
   async generate(request: LlmRuntimeRequest): Promise<LlmRuntimeResponse> {
-    if (request.tools && Object.keys(request.tools).length > 0) {
-      throw new Error('PiAiLlmRuntime does not support AI SDK tool definitions');
-    }
-
     const { provider, modelId } = parseModelSpec(request.modelSpec);
     const model = getModel(provider as never, modelId as never);
+
+    const toolsSection = this.buildToolsSection(request);
+    const userPrompt = toolsSection ? `${request.prompt}\n\n${toolsSection}` : request.prompt;
+
     const message = await complete(model, {
       systemPrompt: request.systemPrompt,
-      messages: [{ role: 'user', content: request.prompt, timestamp: Date.now() }],
+      messages: [{ role: 'user', content: userPrompt, timestamp: Date.now() }],
     });
 
     return { text: extractText(message) };
+  }
+
+  private buildToolsSection(request: LlmRuntimeRequest): string {
+    if (!request.tools || Object.keys(request.tools).length === 0) return '';
+
+    const lines = Object.entries(request.tools).map(([name, tool]) => {
+      const shape = tool.parameters?._def ? '[zod schema]' : '[unknown schema]';
+      return `- ${name}: ${tool.description} ${shape}`;
+    });
+
+    return [
+      '## Available tools',
+      'This runtime does not execute tool calls directly. If a tool result is required, explain assumptions in your JSON output.',
+      ...lines,
+    ].join('\n');
   }
 }
 

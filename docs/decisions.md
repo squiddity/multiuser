@@ -383,7 +383,7 @@ Format:
 ### D49. Model providers and selection
 
 - **Q** — which LLM(s) do agents use, and how is the choice expressed?
-- **D** — Each agent definition declares its model directly as a provider-prefixed spec (`"<provider>:<slug>"`), resolved by `resolveModel` in `src/models/registry.ts`. No logical aliases ("cheap"/"premium"). Supported providers: OpenRouter (`@openrouter/ai-sdk-provider`), Anthropic (`@ai-sdk/anthropic`), OpenAI (`@ai-sdk/openai`); keys are optional and only required when an agent references that provider. Embeddings via OpenAI `text-embedding-3-small` (1536 dim) per D44.
+- **D** — Each agent definition declares its model directly as a provider-prefixed spec (`"<provider>:<slug>"`) passed to the local `LlmRuntime` and resolved by the pi runtime adapter (`src/models/pi-runtime.ts`). No logical aliases ("cheap"/"premium"). Provider keys are optional and only required when an agent references that provider. Embeddings via OpenAI `text-embedding-3-small` (1536 dim) per D44.
 - **R** — Agent roles have genuinely different model needs (e.g. a scheduled consistency reviewer wants a long-context premium model for daily digests; a chat narrator wants a fast, cheap one). Encoding that at the agent definition keeps the choice next to the behavior it affects rather than buried behind a shared env alias. pi-ai model resolution composes cleanly with this declaration style.
 - **S** — v1.
 

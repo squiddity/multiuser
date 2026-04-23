@@ -12,16 +12,14 @@ import { CronerScheduler } from '../../src/scheduler/croner-impl.js';
 import { logger } from '../../src/config/logger.js';
 import { briefingGeneratorWorker } from '../../src/workers/briefing-generator.js';
 
-const mockGenerateText = vi.fn().mockResolvedValue({
+const mockLlmGenerate = vi.fn().mockResolvedValue({
   text: 'Briefing: The party investigated suspicious tracks near a cave. Potential encounter ahead; GM should prepare an ambush beat.',
 });
 
-vi.mock('../../src/models/registry.js', () => ({
-  resolveModel: vi.fn(() => ({ modelId: 'mock:model' })),
-}));
-
-vi.mock('ai', () => ({
-  generateText: (...args: unknown[]) => mockGenerateText(...args),
+vi.mock('../../src/models/pi-runtime.js', () => ({
+  createPiAiLlmRuntime: vi.fn(() => ({
+    generate: (...args: unknown[]) => mockLlmGenerate(...args),
+  })),
 }));
 
 const PARTY_ROOM_ID = '11111111-1111-1111-1111-111111111111';
@@ -44,7 +42,7 @@ describe('briefing-generator', () => {
   let ctx: WorkerContext;
 
   beforeEach(() => {
-    mockGenerateText.mockClear();
+    mockLlmGenerate.mockClear();
   });
 
   beforeAll(async () => {

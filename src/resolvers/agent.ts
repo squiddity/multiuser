@@ -9,7 +9,7 @@ import {
 } from '../core/resolver.js';
 import { createRollTool } from './tools/roll.js';
 import { createRetrieveTool } from './tools/retrieve.js';
-import { createAiSdkLlmRuntime } from '../models/ai-sdk-runtime.js';
+import { createPiAiLlmRuntime } from '../models/pi-runtime.js';
 import { createStatementStore } from '../store/statement-store.js';
 import type { AgentBackedResolverConfig } from './types.js';
 import { logger } from '../config/logger.js';
@@ -29,7 +29,7 @@ export class AgentBackedResolver implements ResolverInterface {
     this.config = config;
     this.rollTool = createRollTool();
     this.retrieveTool = createRetrieveTool();
-    this.llmRuntime = config.llmRuntime ?? createAiSdkLlmRuntime();
+    this.llmRuntime = config.llmRuntime ?? createPiAiLlmRuntime();
     this.statementStore = config.statementStore ?? createStatementStore();
   }
 

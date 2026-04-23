@@ -1,5 +1,5 @@
-import type { Tool } from 'ai';
 import { z } from 'zod';
+import type { LlmToolDefinition } from '../../core/llm-runtime.js';
 
 export const RollParams = z.object({
   count: z.number().int().positive().describe('Number of dice to roll'),
@@ -33,7 +33,7 @@ export function rollDice(params: RollParams): { values: number[]; total: number 
   return { values, total };
 }
 
-export function createRollTool(): Tool {
+export function createRollTool(): LlmToolDefinition {
   return {
     description:
       'Roll dice for skill checks, attacks, and damage. Uses a seed for deterministic results.',

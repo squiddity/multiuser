@@ -1,10 +1,16 @@
-import type { ToolSet } from 'ai';
+import type { ZodTypeAny } from 'zod';
+
+export interface LlmToolDefinition {
+  description: string;
+  parameters: ZodTypeAny;
+  execute: (params: any) => Promise<unknown>;
+}
 
 export interface LlmRuntimeRequest {
   modelSpec: string;
   systemPrompt: string;
   prompt: string;
-  tools?: ToolSet;
+  tools?: Record<string, LlmToolDefinition>;
 }
 
 export interface LlmRuntimeResponse {

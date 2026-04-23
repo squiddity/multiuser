@@ -1,5 +1,5 @@
-import type { Tool } from 'ai';
 import { z } from 'zod';
+import type { LlmToolDefinition } from '../../core/llm-runtime.js';
 import { retrieveByScopes } from '../../store/retrieval.js';
 import type { Scope } from '../../core/statement.js';
 
@@ -30,7 +30,7 @@ export const RetrieveParams = z.object({
 });
 export type RetrieveParams = z.infer<typeof RetrieveParams>;
 
-export function createRetrieveTool(): Tool {
+export function createRetrieveTool(): LlmToolDefinition {
   return {
     description:
       'Retrieve statements from the rules scope for rulebook context, rulings, and precedents.',

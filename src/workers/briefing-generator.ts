@@ -4,11 +4,10 @@ import { appendStatement } from '../store/statements.js';
 import { listByScope } from '../store/statements.js';
 import type { Scope } from '../core/statement.js';
 import { BriefingStatementContract } from '../core/briefing-steering.js';
-import { generateText } from 'ai';
-import { resolveModel } from '../models/registry.js';
-import type { EventBus } from '../core/events.js';
+import { createPiAiLlmRuntime } from '../models/pi-runtime.js';
 
 const BRIEFING_WINDOW_MS = 5 * 60 * 1000; // 5 minutes
+const llmRuntime = createPiAiLlmRuntime();
 
 // Payload includes BOTH static config AND event fields so CronerScheduler can merge them
 export const BriefingGeneratorPayload = z.object({
@@ -103,11 +102,11 @@ export const briefingGeneratorWorker: Worker<BriefingGeneratorPayload> = {
     // Generate briefing content via LLM
     let briefingContent: string;
     try {
-      const model = resolveModel(modelSpec);
       const summaryPrompt = `Summarize the following party activity into a concise admin briefing (2-3 sentences). Focus on key events, any items requiring GM attention, and unresolved questions.\n\n${partyInputs.map((i) => `- [${i.kind}] ${i.content}`).join('\n')}\n\nBriefing:`;
 
-      const result = await generateText({
-        model,
+      const result = await llmRuntime.generate({
+        modelSpec,
+        systemPrompt: 'You are a GM-assistant briefing generator. Return plain text only.',
         prompt: summaryPrompt,
       });
 

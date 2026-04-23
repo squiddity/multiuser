@@ -20,9 +20,9 @@ Fix the concrete stack, component topology, and code layout for v1. Everything a
 
 ## Model providers
 
-- **Per-agent model selection** via `resolveModel(spec)` in `src/models/registry.ts`. Spec is a provider-prefixed string: `"<provider>:<slug>"`, e.g. `openrouter:qwen/qwen-2.5-72b-instruct`, `anthropic:claude-opus-4-6`, `openai:gpt-4o-mini`.
+- **Per-agent model selection** uses provider-prefixed specs (`"<provider>:<slug>"`) passed through the local `LlmRuntime` boundary to the pi runtime adapter (`src/models/pi-runtime.ts`).
 - **Agent definitions own their model choice.** No logical aliases ("cheap"/"premium"); each agent/role declares the spec appropriate for its job. A scheduled consistency reviewer that needs a large context window for daily digests and a chat-path narrator are separate declarations — they may sit on different providers and different slugs independently.
-- **Supported providers**: OpenRouter (`@openrouter/ai-sdk-provider`), Anthropic (`@ai-sdk/anthropic`), OpenAI (`@ai-sdk/openai`). Keys are optional — only providers referenced by registered agent specs must be configured; `resolveModel` throws at resolution time if the required key is missing.
+- **Provider credentials** are loaded by pi model resolution for the referenced provider; missing keys fail at call time.
 - **Embeddings**: OpenAI `text-embedding-3-small` (1536 dim) initially; swap when cost/privacy pressure warrants.
 
 ## How pi SDK components fit
@@ -135,8 +135,8 @@ src/
     registry.ts
     agent.ts              # AgentBackedResolver — context-driven, markdown-instructed
     tools/
-      roll.ts             # AI SDK tool: roll(count, sides, modifier?, seed?)
-      retrieve.ts         # AI SDK tool: retrieve(scope, query)
+      roll.ts             # local LLM tool contract: roll(count, sides, modifier?, seed?)
+      retrieve.ts         # local LLM tool contract: retrieve(scope, query)
     types.ts              # shared resolver agent types (instructions config, tool defs)
     dnd5e/
       instructions.md     # skill-check agent instructions (data artifact)
