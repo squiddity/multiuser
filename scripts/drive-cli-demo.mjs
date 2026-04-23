@@ -2,6 +2,7 @@
 
 import 'dotenv/config';
 import { spawn } from 'node:child_process';
+import { inspect } from 'node:util';
 import postgres from 'postgres';
 
 const PARTY_ROOM_ID = '11111111-1111-1111-1111-111111111111';
@@ -13,6 +14,9 @@ const shouldReset = process.env.DEMO_CLI_RESET !== '0';
 const hasLiveResponder = Boolean(process.env.DEFAULT_MODEL_SPEC?.trim());
 const showDbNotices = process.env.DEMO_SHOW_DB_NOTICES === '1';
 const logLlmInput = process.env.DEMO_LOG_LLM_INPUT !== '0';
+const demoScenario = (process.env.DEMO_SCENARIO?.trim() || 'vertical-slice').toLowerCase();
+
+const SUPPORTED_SCENARIOS = new Set(['vertical-slice', 'briefing-only']);
 
 function createSql(databaseUrl) {
   return postgres(databaseUrl, {
@@ -23,7 +27,7 @@ function createSql(databaseUrl) {
   });
 }
 
-function buildSteps() {
+function buildSteps(scenario) {
   let t = 0;
   const steps = [];
   const add = (delayMs, input) => {
@@ -31,24 +35,42 @@ function buildSteps() {
     steps.push({ delayMs: t, input });
   };
 
-  add(1500, 'help');
-  add(1000, '/ls');
-  add(1000, '/narrate The tavern lanterns flicker as a cold draft sweeps in.');
-  add(1500, '/ls');
-  add(1500, 'room admin-1');
-  add(1200, '/ls');
-  add(1400, `/canonize ${DEMO_OPEN_QUESTION_ID} promote`);
-  add(2500, '/ls');
+  if (scenario === 'vertical-slice') {
+    add(1500, 'help');
+    add(1000, '/ls');
+    add(1000, '/narrate The tavern lanterns flicker as a cold draft sweeps in.');
+    add(1500, '/ls');
+    add(1500, 'room admin-1');
+    add(1200, '/ls');
+    add(1400, `/canonize ${DEMO_OPEN_QUESTION_ID} promote`);
+    add(2500, '/ls');
 
-  if (hasLiveResponder) {
-    add(1500, 'room party-1');
-    add(1200, `/say ${RECALL_QUESTION}`);
-    add(12000, '/ls');
+    if (hasLiveResponder) {
+      add(1500, 'room party-1');
+      add(1200, `/say ${RECALL_QUESTION}`);
+      add(12000, '/ls');
+    }
+
+    add(1500, 'exit');
+    return steps;
   }
 
-  add(1500, 'exit');
+  if (scenario === 'briefing-only') {
+    add(1500, 'help');
+    add(1000, '/ls');
+    add(1000, "/say We found silver marks hidden under the ferryman's toll board.");
+    // Add wait time after each /say for async briefing-generator to process
+    add(3500, '/say Mara spotted a gate sigil matching the old marsh maps.');
+    add(3500, '/ls');
+    add(1500, 'room admin-1');
+    add(1500, '/ls');
+    // Wait for any pending briefing workers to complete
+    add(3000, '/ls');
+    add(1200, 'exit');
+    return steps;
+  }
 
-  return steps;
+  throw new Error(`unsupported DEMO_SCENARIO: ${scenario}`);
 }
 
 async function resetDemoScopes() {
@@ -71,7 +93,7 @@ async function resetDemoScopes() {
   }
 }
 
-async function seedDemoOpenQuestion() {
+async function seedVerticalSliceOpenQuestion() {
   const databaseUrl = process.env.DATABASE_URL;
   if (!databaseUrl) throw new Error('DATABASE_URL is required for demo seed');
 
@@ -106,89 +128,240 @@ async function seedDemoOpenQuestion() {
   }
 }
 
-async function assessDemoResults() {
+function deriveOverall(checks) {
+  const statuses = Object.values(checks).map((c) => c.status);
+  if (statuses.includes('fail')) return 'fail';
+  if (statuses.includes('infra-flake')) return 'infra-flake';
+  if (statuses.every((s) => s === 'pass')) return 'pass';
+  return 'review';
+}
+
+async function assessVerticalSlice(sql) {
+  const checks = {};
+
+  const worldCanon = await sql`
+    select content
+    from statements
+    where scope_type = 'world'
+      and scope_key is null
+      and kind = 'canon-reference'
+      and author_id = 'steering-formalizer'
+    order by created_at desc
+    limit 1
+  `;
+
+  if (worldCanon.length > 0) {
+    const content = worldCanon[0].content;
+    process.stdout.write(`[demo-assess] latest world canon: ${content}\n`);
+    checks.canon_promoted = {
+      status: 'pass',
+      reason: 'promoted canon-reference exists in world scope',
+      evidence: { content },
+    };
+  } else {
+    process.stdout.write('[demo-assess] no world canon-reference found\n');
+    checks.canon_promoted = {
+      status: 'fail',
+      reason: 'no promoted canon-reference found in world scope',
+    };
+  }
+
+  if (!hasLiveResponder) {
+    process.stdout.write(
+      '[demo-assess] live LLM responder not active (DEFAULT_MODEL_SPEC missing), skipped recall check\n',
+    );
+    checks.recall_mentions_canon = {
+      status: 'not-run',
+      reason: 'DEFAULT_MODEL_SPEC missing; recall check skipped',
+    };
+    return checks;
+  }
+
+  const narratorRows = await sql`
+    select content
+    from statements
+    where scope_type = 'party'
+      and scope_key = ${PARTY_ROOM_ID}
+      and author_type = 'agent'
+      and author_id = 'narrator'
+    order by created_at desc
+    limit 5
+  `;
+
+  const answer = narratorRows.find((r) =>
+    typeof r.content === 'string'
+      ? !r.content.includes('The tavern lanterns flicker as a cold draft sweeps in.')
+      : false,
+  )?.content;
+
+  if (!answer) {
+    process.stdout.write('[demo-assess] no narrator reply found after recall prompt\n');
+    checks.recall_mentions_canon = {
+      status: 'review',
+      reason: 'no narrator reply found after recall prompt',
+    };
+    return checks;
+  }
+
+  process.stdout.write(`[demo-assess] narrator recall answer: ${answer}\n`);
+  const mentionsCanon = /ashen cartographers|cartographers guild/i.test(answer);
+  process.stdout.write(
+    `[demo-assess] qualitative check (mentions Ashen Cartographers): ${mentionsCanon ? 'PASS' : 'REVIEW'}\n`,
+  );
+
+  checks.recall_mentions_canon = {
+    status: mentionsCanon ? 'pass' : 'review',
+    reason: mentionsCanon
+      ? 'narrator recall mentions canonized group'
+      : 'narrator recall did not clearly mention canonized group',
+    evidence: { answer },
+  };
+
+  return checks;
+}
+
+async function assessBriefingOnly(sql) {
+  const checks = {};
+
+  const rows = await sql`
+    select id, scope_type, scope_key, content, sources
+    from statements
+    where scope_type = 'governance'
+      and scope_key = ${ADMIN_ROOM_ID}
+      and kind = 'briefing'
+    order by created_at desc
+    limit 1
+  `;
+
+  if (rows.length === 0) {
+    process.stdout.write('[demo-assess] no briefing statement found in admin governance scope\n');
+    checks.briefing_emitted = {
+      status: 'review',
+      reason: 'no briefing emitted yet (expected before PR2 wiring)',
+    };
+    checks.briefing_scope_valid = {
+      status: 'not-run',
+      reason: 'scope validation skipped because no briefing was emitted',
+    };
+    return checks;
+  }
+
+  const latest = rows[0];
+  process.stdout.write(
+    `[demo-assess] latest briefing id=${latest.id} sources=${Array.isArray(latest.sources) ? latest.sources.length : 0}\n`,
+  );
+
+  checks.briefing_emitted = {
+    status: 'pass',
+    reason: 'briefing statement emitted in governance scope',
+    evidence: { statementId: latest.id },
+  };
+
+  const scopeValid = latest.scope_type === 'governance' && latest.scope_key === ADMIN_ROOM_ID;
+  checks.briefing_scope_valid = {
+    status: scopeValid ? 'pass' : 'fail',
+    reason: scopeValid
+      ? 'scope_type=governance and scope_key matches admin room'
+      : 'briefing scope does not match expected governance/admin room',
+    evidence: { scopeType: latest.scope_type, scopeKey: latest.scope_key },
+  };
+
+  return checks;
+}
+
+async function assessDemoResults({
+  scenario,
+  startedAt,
+  finishedAt,
+  childExitCode,
+  childExitSignal,
+}) {
   const databaseUrl = process.env.DATABASE_URL;
-  if (!databaseUrl) return;
+
+  const scorecard = {
+    schemaVersion: '0.1',
+    runId: `${startedAt}-${Math.random().toString(36).slice(2, 8)}`,
+    scenarioId: scenario,
+    milestone: scenario === 'vertical-slice' ? '0001' : '0002',
+    modelSpec: process.env.DEFAULT_MODEL_SPEC ?? 'none',
+    startedAt,
+    finishedAt,
+    overall: 'review',
+    checks: {},
+  };
+
+  if (childExitCode !== 0 || childExitSignal) {
+    scorecard.checks.runtime_exit = {
+      status: 'infra-flake',
+      reason: `demo child exited abnormally (code=${childExitCode}, signal=${childExitSignal})`,
+    };
+    scorecard.overall = 'infra-flake';
+    process.stdout.write(`[demo-scorecard] ${JSON.stringify(scorecard)}\n`);
+    return;
+  }
+
+  if (!databaseUrl) {
+    scorecard.checks.database_available = {
+      status: 'not-run',
+      reason: 'DATABASE_URL missing; assessment queries skipped',
+    };
+    scorecard.overall = 'review';
+    process.stdout.write(`[demo-scorecard] ${JSON.stringify(scorecard)}\n`);
+    return;
+  }
 
   const sql = createSql(databaseUrl);
   try {
-    const worldCanon = await sql`
-      select content
-      from statements
-      where scope_type = 'world'
-        and scope_key is null
-        and kind = 'canon-reference'
-        and author_id = 'steering-formalizer'
-      order by created_at desc
-      limit 1
-    `;
-
-    if (worldCanon.length > 0) {
-      process.stdout.write(`[demo-assess] latest world canon: ${worldCanon[0].content}\n`);
+    if (scenario === 'vertical-slice') {
+      scorecard.checks = await assessVerticalSlice(sql);
+    } else if (scenario === 'briefing-only') {
+      scorecard.checks = await assessBriefingOnly(sql);
     } else {
-      process.stdout.write('[demo-assess] no world canon-reference found\n');
+      scorecard.checks = {
+        scenario_supported: {
+          status: 'fail',
+          reason: `unsupported scenario ${scenario}`,
+        },
+      };
     }
 
-    if (!hasLiveResponder) {
-      process.stdout.write(
-        '[demo-assess] live LLM responder not active (DEFAULT_MODEL_SPEC missing), skipped recall check\n',
-      );
-      return;
-    }
-
-    const narratorRows = await sql`
-      select content
-      from statements
-      where scope_type = 'party'
-        and scope_key = ${PARTY_ROOM_ID}
-        and author_type = 'agent'
-        and author_id = 'narrator'
-      order by created_at desc
-      limit 5
-    `;
-
-    const answer = narratorRows.find((r) =>
-      typeof r.content === 'string'
-        ? !r.content.includes('The tavern lanterns flicker as a cold draft sweeps in.')
-        : false,
-    )?.content;
-
-    if (!answer) {
-      process.stdout.write('[demo-assess] no narrator reply found after recall prompt\n');
-      return;
-    }
-
-    process.stdout.write(`[demo-assess] narrator recall answer: ${answer}\n`);
-
-    const mentionsCanon = /ashen cartographers|cartographers guild/i.test(answer);
-    process.stdout.write(
-      `[demo-assess] qualitative check (mentions Ashen Cartographers): ${mentionsCanon ? 'PASS' : 'REVIEW'}\n`,
-    );
+    scorecard.overall = deriveOverall(scorecard.checks);
+    process.stdout.write(`[demo-scorecard] ${JSON.stringify(scorecard)}\n`);
   } finally {
     await sql.end({ timeout: 5 });
   }
 }
 
 async function main() {
+  if (!SUPPORTED_SCENARIOS.has(demoScenario)) {
+    throw new Error(
+      `DEMO_SCENARIO must be one of: ${[...SUPPORTED_SCENARIOS].join(', ')} (got: ${demoScenario})`,
+    );
+  }
+
+  const startedAt = new Date().toISOString();
+
   if (shouldReset) {
     await resetDemoScopes();
   } else {
     process.stdout.write('[demo-driver] reset skipped (DEMO_CLI_RESET=0)\n');
   }
 
-  await seedDemoOpenQuestion();
+  if (demoScenario === 'vertical-slice') {
+    await seedVerticalSliceOpenQuestion();
+  }
 
   if (!hasLiveResponder) {
     process.stdout.write(
-      '[demo-driver] DEFAULT_MODEL_SPEC is not set; demo will skip /say recall question\n',
+      '[demo-driver] DEFAULT_MODEL_SPEC is not set; demo will skip live narrator behavior\n',
     );
   }
 
   process.stdout.write(
-    `[demo-driver] options: DEMO_SHOW_DB_NOTICES=${showDbNotices ? '1' : '0'} DEMO_LOG_LLM_INPUT=${logLlmInput ? '1' : '0'}\n`,
+    `[demo-driver] options: DEMO_SCENARIO=${demoScenario} DEMO_SHOW_DB_NOTICES=${showDbNotices ? '1' : '0'} DEMO_LOG_LLM_INPUT=${logLlmInput ? '1' : '0'}\n`,
   );
 
-  const steps = buildSteps();
+  const steps = buildSteps(demoScenario);
 
   const childEnv = {
     ...process.env,
@@ -220,7 +393,13 @@ async function main() {
   child.on('exit', async (code, signal) => {
     clearTimeout(forceExitTimer);
     process.stdout.write(`\n[demo-driver] child exited code=${code} signal=${signal}\n`);
-    await assessDemoResults();
+    await assessDemoResults({
+      scenario: demoScenario,
+      startedAt,
+      finishedAt: new Date().toISOString(),
+      childExitCode: code,
+      childExitSignal: signal,
+    });
     process.exit(code ?? (signal ? 1 : 0));
   });
 
@@ -231,8 +410,8 @@ async function main() {
 }
 
 main().catch((err) => {
-  process.stderr.write(
-    `[demo-driver] fatal: ${err instanceof Error ? err.message : String(err)}\n`,
-  );
+  const detail =
+    err instanceof Error ? err.stack || err.message : typeof err === 'string' ? err : inspect(err);
+  process.stderr.write(`[demo-driver] fatal: ${detail}\n`);
   process.exit(1);
 });
