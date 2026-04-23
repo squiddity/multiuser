@@ -68,17 +68,17 @@ Add demonstration and test paths proving that:
 
 ### 0) Contracts and fixtures
 
-- [ ] Define briefing statement schema contract (required fields, sources, scope).
-- [ ] Define steering statement schema contract (intent categories, scope binding, status).
-- [ ] Add deterministic fixture scenarios for two loops:
+- [x] Define briefing statement schema contract (required fields, sources, scope).
+- [x] Define steering statement schema contract (intent categories, scope binding, status).
+- [x] Add deterministic fixture scenarios for two loops:
   - briefing generation from party play
   - steering update reflected in next narrator turn
 
 ### 1) Briefing generation path
 
-- [ ] Implement/finish briefing worker trigger strategy.
-- [ ] Emit admin-facing briefing statements with source linkage.
-- [ ] Add dedupe/idempotency guardrails for repeated trigger windows.
+- [x] Implement/finish briefing worker trigger strategy.
+- [x] Emit admin-facing briefing statements with source linkage.
+- [x] Add dedupe/idempotency guardrails for repeated trigger windows.
 - [ ] Add integration tests asserting scope correctness and source coverage.
 
 ### 2) Steering formalization and application path

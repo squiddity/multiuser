@@ -36,7 +36,14 @@ By default the demo driver sets:
 - `LOG_DB_NOTICES=0` for the spawned CLI process (suppresses noisy Postgres NOTICE output)
 - `LOG_LLM_INPUT=1` for the spawned CLI process (prints narrator system + user prompt payload before each model call)
 
-This runs `scripts/drive-cli-demo.mjs`, which first clears prior statements in the demo scopes (`party-1` and `admin-1`), seeds one governance open question for canonization, then launches the harness and executes a short end-to-end flow:
+This runs `scripts/drive-cli-demo.mjs`, which first clears prior statements in the demo scopes (`party-1` and `admin-1`), then executes a scenario selected by `DEMO_SCENARIO`.
+
+Current scenarios:
+
+- `vertical-slice` (default): seeds one governance open question for canonization and runs the original milestone 0001 flow.
+- `briefing-only`: emits party activity and checks for admin-room `briefing` statements (incremental milestone 0002 checkpoint).
+
+`vertical-slice` flow:
 
 1. `help`
 2. `/ls`
@@ -53,7 +60,9 @@ This runs `scripts/drive-cli-demo.mjs`, which first clears prior statements in t
 
 The script mirrors child stdout/stderr to the parent terminal so the full interaction remains visible.
 
-At the end, it performs a lightweight qualitative assessment by reading recent statements:
+At the end, it performs a lightweight assessment by reading recent statements and emits a JSON line prefixed with `[demo-scorecard]` for machine-readable checkpoints.
+
+For `vertical-slice`, it:
 
 - confirms a promoted `canon-reference` exists in world scope
 - prints the latest narrator answer after the recall question
@@ -66,6 +75,12 @@ This is intentionally heuristic and is meant for rapid demo feedback, not strict
 - Model-provider failures (rate limit, insufficient credits, transient transport) can cause fallback narrator output even when state plumbing is correct.
 - Treat these as infrastructure/provider issues for demo reporting, not automatic context-handling failures.
 - For reproducible runs, keep `DEFAULT_MODEL_SPEC` stable and log LLM input (`DEMO_LOG_LLM_INPUT=1`).
+
+Run the incremental 0002 briefing checkpoint scenario:
+
+```bash
+DEMO_SCENARIO=briefing-only pnpm demo:cli
+```
 
 To preserve prior demo statements, run with reset disabled:
 

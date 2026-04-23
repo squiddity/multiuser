@@ -8,6 +8,7 @@
 - Update the relevant doc **as soon as** a fact, decision, or contract becomes stable — don't let knowledge live only in chat.
 - This file (`AGENTS.md`) stays short. It is an index + working agreements. Detail belongs in `docs/`.
 - Active-tier docs (current milestone, decisions, implementation stack, build/run) are auto-imported below. Design docs are discoverable via the on-demand index and should be read when a task touches their area.
+- After any `git push` to `origin`, include a GitHub URL to the pushed commit in the handoff response (and include compare/range link if requested).
 
 ## Running tests
 
