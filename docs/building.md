@@ -97,6 +97,18 @@ See `docs/cli-harness-driving.md` for the interaction contract and rationale.
 
 ## Tests
 
+### Pre-commit checklist (REQUIRED)
+
+**Before every commit/push, ensure these pass:**
+
+```bash
+pnpm typecheck   # type checking
+pnpm format:check  # code formatting
+pnpm test        # unit tests
+```
+
+**Why:** CI gates require `typecheck` and `format:check` to pass. Failing these blocks merge and wastes reviewer time. Fix locally in seconds rather than in CI.
+
 ### Unit tests (no DB required)
 
 ```bash

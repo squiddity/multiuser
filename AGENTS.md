@@ -10,9 +10,50 @@
 - Active-tier docs (current milestone, decisions, implementation stack, build/run) are auto-imported below. Design docs are discoverable via the on-demand index and should be read when a task touches their area.
 - After any `git push` to `origin`, include a GitHub URL to the pushed commit in the handoff response (and include compare/range link if requested).
 
-## Running tests
+## Pre-commit & Pre-push checklist
 
-- **Pre-push minimum gate**: run `pnpm typecheck` and `pnpm test` before every push.
+**Run these before every commit and push**:
+
+```bash
+# 1. Type check (required)
+pnpm typecheck
+
+# 2. Format (required)
+pnpm format:check  # or fix with: pnpm format
+
+# 3. Unit tests (required)
+pnpm test
+
+# 4. Integration tests (if Postgres available)
+pnpm test:integration
+```
+
+**Why this matters:**
+
+- CI gates include `typecheck` and `format:check` as **required** checks
+- Failing these gates blocks merge and wastes reviewer time
+- Fixing locally takes seconds; fixing in CI requires a new push cycle
+- **Rule:** Never push if `pnpm typecheck` or `pnpm format:check` fails
+
+**Quick fix pattern:**
+
+```bash
+# If typecheck fails:
+#   - Read the error, fix the type issue, re-run `pnpm typecheck`
+#   - Don't suppress with @ts-ignore unless absolutely necessary
+
+# If format fails:
+#   - Run `pnpm format` to auto-fix
+#   - Verify with `pnpm format:check` that it passes
+
+# If tests fail:
+#   - Run `pnpm test` to see failures
+#   - Fix the code or update tests as appropriate
+#   - Re-run until all pass
+```
+
+**Running tests**:
+
 - **Unit tests** (no DB): `pnpm test` or `npx vitest run`
 - **Integration tests** (require Postgres): `pnpm test:integration` or `npx vitest run test/integration`
   - Start Postgres first: `docker compose -f docker/compose.yml up -d postgres`
