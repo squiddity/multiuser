@@ -1,7 +1,8 @@
 import { Hono } from 'hono';
 import { logger as honoLogger } from 'hono/logger';
 import { cors } from 'hono/cors';
-import { z } from 'zod';
+import { Type } from 'typebox';
+import { withValidation } from '../lib/typebox.js';
 import { ping } from '../store/client.js';
 import { env } from '../config/env.js';
 import { getStatement, listByScope, scopeParts, deleteStatement } from '../store/statements.js';
@@ -10,13 +11,19 @@ import { NewStatement } from '../core/statement.js';
 import { canonizeOpenQuestion, CanonizeError } from '../store/canonize.js';
 import type { EventBus } from '../core/events.js';
 
-const CanonizeRequest = z.object({
-  userId: z.string().min(1),
-  openQuestionId: z.string().uuid(),
-  decision: z.enum(['promote', 'reject', 'supersede']),
-  rationale: z.string().optional(),
-  revisedCandidate: z.string().optional(),
-});
+const CanonizeRequest = withValidation(
+  Type.Object({
+    userId: Type.String({ minLength: 1 }),
+    openQuestionId: Type.String({ format: 'uuid' }),
+    decision: Type.Union([
+      Type.Literal('promote'),
+      Type.Literal('reject'),
+      Type.Literal('supersede'),
+    ]),
+    rationale: Type.Optional(Type.String()),
+    revisedCandidate: Type.Optional(Type.String()),
+  }),
+);
 
 export function createApp(events: EventBus): Hono {
   const app = new Hono();
@@ -37,7 +44,7 @@ export function createApp(events: EventBus): Hono {
     const body = await c.req.json();
     const parsed = NewStatement.safeParse(body);
     if (!parsed.success) {
-      return c.json({ error: 'invalid request', details: parsed.error.flatten() }, 400);
+      return c.json({ error: 'invalid request', details: parsed.error.message }, 400);
     }
     const input = parsed.data;
     const id = await appendIndexAndEmit(input, events);
@@ -111,7 +118,7 @@ export function createApp(events: EventBus): Hono {
     const body = await c.req.json();
     const parsed = CanonizeRequest.safeParse(body);
     if (!parsed.success) {
-      return c.json({ error: 'invalid request', details: parsed.error.flatten() }, 400);
+      return c.json({ error: 'invalid request', details: parsed.error.message }, 400);
     }
     try {
       const id = await canonizeOpenQuestion({ ...parsed.data, roomId }, events);

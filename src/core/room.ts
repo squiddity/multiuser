@@ -1,60 +1,87 @@
-import { z } from 'zod';
+import { Type, type Static } from 'typebox';
+import { withValidation } from '../lib/typebox.js';
 import { Scope } from './statement.js';
 
-export const Capability = z.string().min(1).brand<'Capability'>();
-export type Capability = z.infer<typeof Capability>;
+const CapabilitySchema = Type.String({ minLength: 1 });
+export const Capability = withValidation(CapabilitySchema);
+export type Capability = Static<typeof CapabilitySchema>;
 
-export const Role = z.object({
-  id: z.string().uuid(),
-  name: z.string().min(1),
-  readScopes: z.array(Scope).default([]),
-  writeScopes: z.array(Scope).default([]),
-  capabilities: z.array(Capability).default([]),
-  narrativeAttributes: z.array(z.string()).default([]),
-});
-export type Role = z.infer<typeof Role>;
-
-export const ScopePattern = z.discriminatedUnion('type', [
-  z.object({ type: z.literal('world') }),
-  z.object({ type: z.literal('party'), partyId: z.string().uuid().optional() }),
-  z.object({ type: z.literal('character'), characterId: z.string().uuid().optional() }),
-  z.object({ type: z.literal('session'), sessionId: z.string().uuid().optional() }),
-  z.object({ type: z.literal('meta'), roomId: z.string().uuid().optional() }),
-  z.object({
-    type: z.literal('rules'),
-    system: z.string().min(1),
-    variant: z.enum(['base', 'house']).default('base'),
+const ScopePatternSchema = Type.Union([
+  Type.Object({ type: Type.Literal('world') }),
+  Type.Object({
+    type: Type.Literal('party'),
+    partyId: Type.Optional(Type.String({ format: 'uuid' })),
   }),
-  z.object({ type: z.literal('style'), worldId: z.string().uuid().optional() }),
-  z.object({ type: z.literal('governance'), roomId: z.string().uuid().optional() }),
-  z.object({ type: z.literal('mapping') }),
-  z.object({ type: z.literal('eval') }),
+  Type.Object({
+    type: Type.Literal('character'),
+    characterId: Type.Optional(Type.String({ format: 'uuid' })),
+  }),
+  Type.Object({
+    type: Type.Literal('session'),
+    sessionId: Type.Optional(Type.String({ format: 'uuid' })),
+  }),
+  Type.Object({
+    type: Type.Literal('meta'),
+    roomId: Type.Optional(Type.String({ format: 'uuid' })),
+  }),
+  Type.Object({
+    type: Type.Literal('rules'),
+    system: Type.String({ minLength: 1 }),
+    variant: Type.Optional(
+      Type.Union([Type.Literal('base'), Type.Literal('house')], { default: 'base' }),
+    ),
+  }),
+  Type.Object({
+    type: Type.Literal('style'),
+    worldId: Type.Optional(Type.String({ format: 'uuid' })),
+  }),
+  Type.Object({
+    type: Type.Literal('governance'),
+    roomId: Type.Optional(Type.String({ format: 'uuid' })),
+  }),
+  Type.Object({ type: Type.Literal('mapping') }),
+  Type.Object({ type: Type.Literal('eval') }),
 ]);
-export type ScopePattern = z.infer<typeof ScopePattern>;
+export const ScopePattern = withValidation(ScopePatternSchema);
+export type ScopePattern = Static<typeof ScopePatternSchema>;
 
-export const ScopeBinding = z.object({
+const ScopeBindingSchema = Type.Object({
   writeTarget: Scope,
-  readSet: z.array(ScopePattern),
-  emitSet: z.array(ScopePattern).default([]),
+  readSet: Type.Array(ScopePatternSchema),
+  emitSet: Type.Optional(Type.Array(ScopePatternSchema, { default: [] })),
 });
-export type ScopeBinding = z.infer<typeof ScopeBinding>;
+export const ScopeBinding = withValidation(ScopeBindingSchema);
+export type ScopeBinding = Static<typeof ScopeBindingSchema>;
 
-export const Room = z.object({
-  id: z.string().uuid(),
-  name: z.string().min(1),
-  binding: ScopeBinding,
-  oversightOf: z.array(z.string().uuid()).default([]),
-  createdAt: z.string().datetime(),
-  archivedAt: z.string().datetime().optional(),
+const RoleSchema = Type.Object({
+  id: Type.String({ format: 'uuid' }),
+  name: Type.String({ minLength: 1 }),
+  readScopes: Type.Optional(Type.Array(Scope, { default: [] })),
+  writeScopes: Type.Optional(Type.Array(Scope, { default: [] })),
+  capabilities: Type.Optional(Type.Array(CapabilitySchema, { default: [] })),
+  narrativeAttributes: Type.Optional(Type.Array(Type.String(), { default: [] })),
 });
-export type Room = z.infer<typeof Room>;
+export const Role = withValidation(RoleSchema);
+export type Role = Static<typeof RoleSchema>;
 
-export const RoleGrant = z.object({
-  userId: z.string().min(1),
-  roomId: z.string().uuid(),
-  roleId: z.string().uuid(),
-  grantedAt: z.string().datetime(),
-  grantedBy: z.string().min(1),
-  precedence: z.number().int().default(0),
+const RoomSchema = Type.Object({
+  id: Type.String({ format: 'uuid' }),
+  name: Type.String({ minLength: 1 }),
+  binding: ScopeBindingSchema,
+  oversightOf: Type.Optional(Type.Array(Type.String({ format: 'uuid' }), { default: [] })),
+  createdAt: Type.String({ format: 'date-time' }),
+  archivedAt: Type.Optional(Type.String({ format: 'date-time' })),
 });
-export type RoleGrant = z.infer<typeof RoleGrant>;
+export const Room = withValidation(RoomSchema);
+export type Room = Static<typeof RoomSchema>;
+
+const RoleGrantSchema = Type.Object({
+  userId: Type.String({ minLength: 1 }),
+  roomId: Type.String({ format: 'uuid' }),
+  roleId: Type.String({ format: 'uuid' }),
+  grantedAt: Type.String({ format: 'date-time' }),
+  grantedBy: Type.String({ minLength: 1 }),
+  precedence: Type.Optional(Type.Integer({ default: 0 })),
+});
+export const RoleGrant = withValidation(RoleGrantSchema);
+export type RoleGrant = Static<typeof RoleGrantSchema>;

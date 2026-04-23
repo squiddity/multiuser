@@ -1,5 +1,6 @@
-import type { z } from 'zod';
 import type { Logger } from 'pino';
+import type { TSchema } from 'typebox';
+import type { ValidatedSchema } from '../lib/typebox.js';
 
 export interface WorkerContext {
   logger: Logger;
@@ -8,7 +9,7 @@ export interface WorkerContext {
 
 export interface Worker<TPayload> {
   readonly name: string;
-  readonly schema: z.ZodType<TPayload>;
+  readonly schema: ValidatedSchema<TSchema>;
   handler(payload: TPayload, ctx: WorkerContext): Promise<void>;
 }
 

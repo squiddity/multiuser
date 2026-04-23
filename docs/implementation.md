@@ -10,9 +10,9 @@ Fix the concrete stack, component topology, and code layout for v1. Everything a
 - **Agent runtime: pi SDK components (`@mariozechner/pi-ai`, `@mariozechner/pi-agent-core`) behind local interfaces.** Use pi for model/provider resolution, tool-call loop execution, streaming events, and per-turn usage/cost accounting.
 - **Domain types and canonical state remain local.** The statement store is authoritative; pi runtime state is reconstructable/ephemeral. Runtime swap remains possible in principle.
 - **Storage: PostgreSQL 16+** with the **pgvector** extension. JSONB for flexible statement fields.
-- **DB access: Drizzle** (typed query builder, migrations, pairs well with Zod).
+- **DB access: Drizzle** (typed query builder, migrations, pairs well with TypeBox contracts).
 - **Discord: discord.js v14+**. Gateway, interactions, webhooks, REST.
-- **Validation: Zod now, TypeBox target.** Existing boundaries use Zod; migration planning targets TypeBox for schema portability and closer alignment with pi ecosystem tooling.
+- **Validation: TypeBox 1.x.** Runtime schema validation uses TypeBox with local parse/safeParse adapters where needed for boundary ergonomics.
 - **Scheduler (tier 0): `croner`** + in-process worker registry behind a `Scheduler` interface. Keeps Temporal / Inngest swap open.
 - **Observability: `pino`** structured logs; OpenTelemetry added at tier 2.
 - **Testing: Vitest** (unit + integration). Fixtures live as seed statements in a dedicated `eval` scope.
@@ -58,7 +58,7 @@ Fix the concrete stack, component topology, and code layout for v1. Everything a
             │                               │
 ┌───────────┴───────────┐       ┌──────────┴──────────────┐
 │  Worker registry      │       │  Resolver registry       │
-│  (Zod-typed fns)      │       │  (per rules system)      │
+│  (schema-typed fns)   │       │  (per rules system)      │
 │  • live-responder     │       │  • dnd5e (agent-backed) │
 │  • briefing-generator │       │  • future: pf2e, ...     │
 │  • ingester           │       └──────────────────────────┘
@@ -76,7 +76,7 @@ Fix the concrete stack, component topology, and code layout for v1. Everything a
 └──────────────────────────┘   └──────────────────────┘
 ```
 
-Every arrow is schema-typed (Zod now, TypeBox migration planned).
+Every arrow is schema-typed via TypeBox contracts.
 
 ## Directory layout
 
@@ -159,7 +159,7 @@ src/
     harness.ts
     fixtures/
   config/
-    env.ts              # Zod-validated env
+    env.ts              # TypeBox-validated env
     campaign.ts         # per-campaign config schemas
   index.ts              # bootstrap; wire everything
 world/                  # seed authoring content (markdown + yaml)
@@ -296,7 +296,7 @@ Per `runtime-and-processing.md`:
 
 ## Configuration
 
-- `.env` for secrets (Discord token, DB URL, Anthropic API key). Zod-validated at boot.
+- `.env` for secrets (Discord token, DB URL, provider API keys). TypeBox-validated at boot.
 - `config/` for per-deployment toggles (feature flags, default capabilities, scheduler tier choice).
 - Per-campaign configuration is statements in the store, not files — editable at runtime through the authoring UI.
 

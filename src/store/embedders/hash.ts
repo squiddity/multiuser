@@ -34,7 +34,8 @@ export class HashEmbedder implements Embedder {
     const bag = new Float64Array(this.dim);
     for (const token of tokens) {
       const idx = fnv1a(token) % this.dim;
-      bag[idx] = (bag[idx] ?? 0) + 1;
+      const prev = bag[idx] ?? 0;
+      bag[idx] = prev + 1;
     }
 
     let norm = 0;

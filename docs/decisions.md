@@ -464,9 +464,9 @@ Format:
 ### D59. Validation schema direction (Zod → TypeBox)
 
 - **Q** — stay on Zod indefinitely, or migrate toward TypeBox?
-- **D** — Plan a full migration to TypeBox in phases, while preserving behavior and contracts during transition.
-- **R** — TypeBox gives serializable schemas that compose well with pi tooling and distributed/runtime-boundary contracts. Migration is non-trivial, so we phase it behind adapters and parity tests.
-- **S** — roadmap.
+- **D** — Migrate validation/runtime schemas to TypeBox 1.x across v1 boundaries, preserving behavior and contract shape. Keep local parse/safeParse adapters where boundary ergonomics benefit from that call pattern.
+- **R** — TypeBox gives serializable schemas that compose well with pi tooling and distributed/runtime-boundary contracts while remaining suitable for local runtime validation.
+- **S** — complete (v1 codepaths).
 
 ---
 

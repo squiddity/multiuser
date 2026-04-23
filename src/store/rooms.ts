@@ -35,13 +35,19 @@ export interface RoleRecord {
 export async function getRole(roleId: string): Promise<RoleRecord | null> {
   const [row] = await db.select().from(roles).where(eq(roles.id, roleId)).limit(1);
   if (!row) return null;
-  const parsed = Role.pick({
-    readScopes: true,
-    writeScopes: true,
-    capabilities: true,
-    narrativeAttributes: true,
-  }).parse(row.definition);
-  return { id: row.id, name: row.name, ...parsed };
+  const parsed = Role.parse({
+    id: row.id,
+    name: row.name,
+    ...(row.definition as Record<string, unknown>),
+  });
+  return {
+    id: row.id,
+    name: row.name,
+    readScopes: parsed.readScopes ?? [],
+    writeScopes: parsed.writeScopes ?? [],
+    capabilities: parsed.capabilities ?? [],
+    narrativeAttributes: parsed.narrativeAttributes ?? [],
+  };
 }
 
 export interface RoleGrantRecord {

@@ -1,69 +1,85 @@
-import { z } from 'zod';
+import { Type, type Static } from 'typebox';
+import { withValidation } from '../lib/typebox.js';
 
-export const BriefingUnresolvedItem = z.object({
-  question: z.string().min(1),
-  relatedSourceIds: z.array(z.string().uuid()).default([]),
+const BriefingUnresolvedItemSchema = Type.Object({
+  question: Type.String({ minLength: 1 }),
+  relatedSourceIds: Type.Optional(Type.Array(Type.String({ format: 'uuid' }), { default: [] })),
 });
-export type BriefingUnresolvedItem = z.infer<typeof BriefingUnresolvedItem>;
+export const BriefingUnresolvedItem = withValidation(BriefingUnresolvedItemSchema);
+export type BriefingUnresolvedItem = Static<typeof BriefingUnresolvedItemSchema>;
 
-export const BriefingFields = z.object({
-  partyRoomId: z.string().uuid(),
-  adminRoomId: z.string().uuid(),
-  sourceIds: z.array(z.string().uuid()).min(1),
-  windowStart: z.string().datetime(),
-  windowEnd: z.string().datetime(),
-  unresolved: z.array(BriefingUnresolvedItem).default([]),
+const BriefingFieldsSchema = Type.Object({
+  partyRoomId: Type.String({ format: 'uuid' }),
+  adminRoomId: Type.String({ format: 'uuid' }),
+  sourceIds: Type.Array(Type.String({ format: 'uuid' }), { minItems: 1 }),
+  windowStart: Type.String({ format: 'date-time' }),
+  windowEnd: Type.String({ format: 'date-time' }),
+  unresolved: Type.Optional(Type.Array(BriefingUnresolvedItemSchema, { default: [] })),
 });
-export type BriefingFields = z.infer<typeof BriefingFields>;
+export const BriefingFields = withValidation(BriefingFieldsSchema);
+export type BriefingFields = Static<typeof BriefingFieldsSchema>;
 
-export const BriefingStatementContract = z.object({
-  kind: z.literal('briefing'),
-  scope: z.object({
-    type: z.literal('governance'),
-    roomId: z.string().uuid(),
+const BriefingStatementContractSchema = Type.Object({
+  kind: Type.Literal('briefing'),
+  scope: Type.Object({
+    type: Type.Literal('governance'),
+    roomId: Type.String({ format: 'uuid' }),
   }),
-  content: z.string().min(1),
-  sources: z.array(z.string().uuid()).min(1),
-  fields: BriefingFields,
+  content: Type.String({ minLength: 1 }),
+  sources: Type.Array(Type.String({ format: 'uuid' }), { minItems: 1 }),
+  fields: BriefingFieldsSchema,
 });
-export type BriefingStatementContract = z.infer<typeof BriefingStatementContract>;
+export const BriefingStatementContract = withValidation(BriefingStatementContractSchema);
+export type BriefingStatementContract = Static<typeof BriefingStatementContractSchema>;
 
-export const SteeringStatus = z.enum(['active', 'superseded', 'revoked']);
-export type SteeringStatus = z.infer<typeof SteeringStatus>;
-
-export const SteeringIntent = z.enum([
-  'tone',
-  'constraint',
-  'direction',
-  'pacing',
-  'spotlight',
-  'safety',
-  'other',
+const SteeringStatusSchema = Type.Union([
+  Type.Literal('active'),
+  Type.Literal('superseded'),
+  Type.Literal('revoked'),
 ]);
-export type SteeringIntent = z.infer<typeof SteeringIntent>;
+export const SteeringStatus = withValidation(SteeringStatusSchema);
+export type SteeringStatus = Static<typeof SteeringStatusSchema>;
 
-export const SteeringFields = z.object({
-  appliesToPartyRoomId: z.string().uuid(),
-  issuedByUserId: z.string().min(1),
-  intent: SteeringIntent,
-  tone: z.string().min(1).optional(),
-  constraints: z.array(z.string().min(1)).default([]),
-  direction: z.string().min(1),
-  status: SteeringStatus.default('active'),
+const SteeringIntentSchema = Type.Union([
+  Type.Literal('tone'),
+  Type.Literal('constraint'),
+  Type.Literal('direction'),
+  Type.Literal('pacing'),
+  Type.Literal('spotlight'),
+  Type.Literal('safety'),
+  Type.Literal('other'),
+]);
+export const SteeringIntent = withValidation(SteeringIntentSchema);
+export type SteeringIntent = Static<typeof SteeringIntentSchema>;
+
+const SteeringFieldsSchema = Type.Object({
+  appliesToPartyRoomId: Type.String({ format: 'uuid' }),
+  issuedByUserId: Type.String({ minLength: 1 }),
+  intent: SteeringIntentSchema,
+  tone: Type.Optional(Type.String({ minLength: 1 })),
+  constraints: Type.Optional(Type.Array(Type.String({ minLength: 1 }), { default: [] })),
+  direction: Type.String({ minLength: 1 }),
+  status: Type.Optional(
+    Type.Union([Type.Literal('active'), Type.Literal('superseded'), Type.Literal('revoked')], {
+      default: 'active',
+    }),
+  ),
 });
-export type SteeringFields = z.infer<typeof SteeringFields>;
+export const SteeringFields = withValidation(SteeringFieldsSchema);
+export type SteeringFields = Static<typeof SteeringFieldsSchema>;
 
-export const SteeringStatementContract = z.object({
-  kind: z.literal('steering'),
-  scope: z.object({
-    type: z.literal('governance'),
-    roomId: z.string().uuid(),
+const SteeringStatementContractSchema = Type.Object({
+  kind: Type.Literal('steering'),
+  scope: Type.Object({
+    type: Type.Literal('governance'),
+    roomId: Type.String({ format: 'uuid' }),
   }),
-  content: z.string().min(1),
-  sources: z.array(z.string().uuid()).min(1),
-  fields: SteeringFields,
+  content: Type.String({ minLength: 1 }),
+  sources: Type.Array(Type.String({ format: 'uuid' }), { minItems: 1 }),
+  fields: SteeringFieldsSchema,
 });
-export type SteeringStatementContract = z.infer<typeof SteeringStatementContract>;
+export const SteeringStatementContract = withValidation(SteeringStatementContractSchema);
+export type SteeringStatementContract = Static<typeof SteeringStatementContractSchema>;
 
 export interface SteeringCandidate {
   id: string;

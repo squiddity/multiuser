@@ -1,18 +1,21 @@
-import { z } from 'zod';
+import { Type, type Static } from 'typebox';
+import { withValidation } from '../lib/typebox.js';
 
-export const TriggerSpec = z.discriminatedUnion('type', [
-  z.object({ type: z.literal('cron'), expr: z.string().min(1) }),
-  z.object({ type: z.literal('once'), at: z.string().datetime() }),
-  z.object({
-    type: z.literal('event'),
-    predicate: z.object({
-      kind: z.string().optional(),
-      scopeType: z.string().optional(),
-      scopeKey: z.string().optional(),
+const TriggerSpecSchema = Type.Union([
+  Type.Object({ type: Type.Literal('cron'), expr: Type.String({ minLength: 1 }) }),
+  Type.Object({ type: Type.Literal('once'), at: Type.String({ format: 'date-time' }) }),
+  Type.Object({
+    type: Type.Literal('event'),
+    predicate: Type.Object({
+      kind: Type.Optional(Type.String()),
+      scopeType: Type.Optional(Type.String()),
+      scopeKey: Type.Optional(Type.String()),
     }),
   }),
 ]);
-export type TriggerSpec = z.infer<typeof TriggerSpec>;
+
+export const TriggerSpec = withValidation(TriggerSpecSchema);
+export type TriggerSpec = Static<typeof TriggerSpecSchema>;
 
 export interface Scheduler {
   schedule(trigger: TriggerSpec, workerName: string, payload: unknown): Promise<string>;

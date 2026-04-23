@@ -1,19 +1,22 @@
-import { z } from 'zod';
+import { Type, type Static } from 'typebox';
+import { withValidation } from '../lib/typebox.js';
 import type { Worker } from '../core/worker.js';
 import { getStatement } from '../store/statements.js';
 import { Narrator } from '../agents/narrator.js';
 
-export const LiveResponderPayload = z.object({
+const LiveResponderPayloadSchema = Type.Object({
   // merged from StatementEvent by CronerScheduler:
-  id: z.string().uuid(),
-  kind: z.string(),
-  scopeType: z.string(),
-  scopeKey: z.string().nullable(),
+  id: Type.String({ format: 'uuid' }),
+  kind: Type.String(),
+  scopeType: Type.String(),
+  scopeKey: Type.Union([Type.String(), Type.Null()]),
   // static config registered at boot:
-  adminRoomId: z.string().uuid(),
-  modelSpec: z.string(),
+  adminRoomId: Type.String({ format: 'uuid' }),
+  modelSpec: Type.String(),
 });
-export type LiveResponderPayload = z.infer<typeof LiveResponderPayload>;
+
+export const LiveResponderPayload = withValidation(LiveResponderPayloadSchema);
+export type LiveResponderPayload = Static<typeof LiveResponderPayloadSchema>;
 
 export const liveResponderWorker: Worker<LiveResponderPayload> = {
   name: 'live-responder',

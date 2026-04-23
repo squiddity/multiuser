@@ -1,63 +1,83 @@
-import { z } from 'zod';
+import { Type, type Static } from 'typebox';
+import { withValidation } from '../lib/typebox.js';
 
-export const StatementKind = z.enum([
-  'narration',
-  'dialogue',
-  'pose',
-  'inner-monologue',
-  'private-message',
-  'mechanical',
-  'ruling',
-  'invention',
-  'canon-reference',
-  'briefing',
-  'steering',
-  'open-question',
-  'authoring-decision',
-  'safety-invocation',
-  'governance',
-  'mapping',
-  'interception',
-  'eval',
-  'reaction',
-  'decision',
-  'command-query',
+const StatementKindSchema = Type.Union([
+  Type.Literal('narration'),
+  Type.Literal('dialogue'),
+  Type.Literal('pose'),
+  Type.Literal('inner-monologue'),
+  Type.Literal('private-message'),
+  Type.Literal('mechanical'),
+  Type.Literal('ruling'),
+  Type.Literal('invention'),
+  Type.Literal('canon-reference'),
+  Type.Literal('briefing'),
+  Type.Literal('steering'),
+  Type.Literal('open-question'),
+  Type.Literal('authoring-decision'),
+  Type.Literal('safety-invocation'),
+  Type.Literal('governance'),
+  Type.Literal('mapping'),
+  Type.Literal('interception'),
+  Type.Literal('eval'),
+  Type.Literal('reaction'),
+  Type.Literal('decision'),
+  Type.Literal('command-query'),
 ]);
-export type StatementKind = z.infer<typeof StatementKind>;
+export const StatementKind = withValidation(StatementKindSchema);
+export type StatementKind = Static<typeof StatementKindSchema>;
 
-export const Scope = z.discriminatedUnion('type', [
-  z.object({ type: z.literal('world') }),
-  z.object({ type: z.literal('party'), partyId: z.string().uuid() }),
-  z.object({ type: z.literal('character'), characterId: z.string().uuid() }),
-  z.object({ type: z.literal('session'), sessionId: z.string().uuid() }),
-  z.object({ type: z.literal('meta'), roomId: z.string().uuid() }),
-  z.object({
-    type: z.literal('rules'),
-    system: z.string().min(1),
-    variant: z.enum(['base', 'house']).default('base'),
+const ScopeSchema = Type.Union([
+  Type.Object({ type: Type.Literal('world') }),
+  Type.Object({ type: Type.Literal('party'), partyId: Type.String({ format: 'uuid' }) }),
+  Type.Object({ type: Type.Literal('character'), characterId: Type.String({ format: 'uuid' }) }),
+  Type.Object({ type: Type.Literal('session'), sessionId: Type.String({ format: 'uuid' }) }),
+  Type.Object({ type: Type.Literal('meta'), roomId: Type.String({ format: 'uuid' }) }),
+  Type.Object({
+    type: Type.Literal('rules'),
+    system: Type.String({ minLength: 1 }),
+    variant: Type.Optional(
+      Type.Union([Type.Literal('base'), Type.Literal('house')], { default: 'base' }),
+    ),
   }),
-  z.object({ type: z.literal('style'), worldId: z.string().uuid().optional() }),
-  z.object({ type: z.literal('governance'), roomId: z.string().uuid() }),
-  z.object({ type: z.literal('mapping') }),
-  z.object({ type: z.literal('eval') }),
+  Type.Object({
+    type: Type.Literal('style'),
+    worldId: Type.Optional(Type.String({ format: 'uuid' })),
+  }),
+  Type.Object({ type: Type.Literal('governance'), roomId: Type.String({ format: 'uuid' }) }),
+  Type.Object({ type: Type.Literal('mapping') }),
+  Type.Object({ type: Type.Literal('eval') }),
 ]);
-export type Scope = z.infer<typeof Scope>;
+export const Scope = withValidation(ScopeSchema);
+export type Scope = Static<typeof ScopeSchema>;
 
-export const Statement = z.object({
-  id: z.string().uuid(),
-  scope: Scope,
-  kind: StatementKind,
-  authorType: z.enum(['user', 'agent', 'system']),
-  authorId: z.string().min(1),
-  icOoc: z.enum(['ic', 'ooc']).optional(),
-  createdAt: z.string().datetime(),
-  supersedes: z.string().uuid().optional(),
-  sources: z.array(z.string().uuid()).default([]),
-  content: z.string(),
-  fields: z.record(z.unknown()).default({}),
-  embedding: z.array(z.number()).optional(),
+const StatementSchema = Type.Object({
+  id: Type.String({ format: 'uuid' }),
+  scope: ScopeSchema,
+  kind: StatementKindSchema,
+  authorType: Type.Union([Type.Literal('user'), Type.Literal('agent'), Type.Literal('system')]),
+  authorId: Type.String({ minLength: 1 }),
+  icOoc: Type.Optional(Type.Union([Type.Literal('ic'), Type.Literal('ooc')])),
+  createdAt: Type.String({ format: 'date-time' }),
+  supersedes: Type.Optional(Type.String({ format: 'uuid' })),
+  sources: Type.Optional(Type.Array(Type.String({ format: 'uuid' }), { default: [] })),
+  content: Type.String(),
+  fields: Type.Optional(Type.Record(Type.String(), Type.Unknown(), { default: {} })),
+  embedding: Type.Optional(Type.Array(Type.Number())),
 });
-export type Statement = z.infer<typeof Statement>;
+export const Statement = withValidation(StatementSchema);
+export type Statement = Static<typeof StatementSchema>;
 
-export const NewStatement = Statement.omit({ id: true, createdAt: true, embedding: true });
-export type NewStatement = z.infer<typeof NewStatement>;
+const NewStatementSchema = Type.Object({
+  scope: ScopeSchema,
+  kind: StatementKindSchema,
+  authorType: Type.Union([Type.Literal('user'), Type.Literal('agent'), Type.Literal('system')]),
+  authorId: Type.String({ minLength: 1 }),
+  icOoc: Type.Optional(Type.Union([Type.Literal('ic'), Type.Literal('ooc')])),
+  supersedes: Type.Optional(Type.String({ format: 'uuid' })),
+  sources: Type.Optional(Type.Array(Type.String({ format: 'uuid' }), { default: [] })),
+  content: Type.String(),
+  fields: Type.Optional(Type.Record(Type.String(), Type.Unknown(), { default: {} })),
+});
+export const NewStatement = withValidation(NewStatementSchema);
+export type NewStatement = Static<typeof NewStatementSchema>;

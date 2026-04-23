@@ -1,8 +1,9 @@
-import type { ZodTypeAny } from 'zod';
+import type { TSchema } from 'typebox';
+import type { ValidatedSchema } from '../lib/typebox.js';
 
 export interface LlmToolDefinition {
   description: string;
-  parameters: ZodTypeAny;
+  parameters: ValidatedSchema<TSchema>;
   execute: (params: any) => Promise<unknown>;
 }
 

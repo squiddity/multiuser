@@ -16,6 +16,14 @@ Plan a full migration from Zod to TypeBox while preserving current runtime behav
 2. Domain behavior remains unchanged.
 3. Migration is incremental and test-gated.
 
+## Status
+
+Migration completed for v1 codepaths:
+
+- Runtime validation and schema contracts use TypeBox 1.x.
+- Worker payloads, resolver contracts, tool parameter schemas, statement/scope/room contracts, API body validation, and env validation are all TypeBox-backed.
+- Direct Zod dependency has been removed from project runtime code.
+
 ## Phases
 
 ### Phase 1: Boundary-first adapters
@@ -38,8 +46,8 @@ Plan a full migration from Zod to TypeBox while preserving current runtime behav
 
 ### Phase 4: Remove Zod runtime dependency
 
-- Remove remaining Zod imports.
-- Keep compatibility shims only if external consumers still depend on Zod-shaped exports.
+- Remove remaining Zod imports. ✅
+- Keep compatibility shims only if external consumers still depend on Zod-shaped exports. (Not required for current v1 boundaries.)
 
 ## Acceptance criteria
 

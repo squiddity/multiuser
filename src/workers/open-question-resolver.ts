@@ -1,17 +1,20 @@
-import { z } from 'zod';
+import { Type, type Static } from 'typebox';
+import { withValidation } from '../lib/typebox.js';
 import type { Worker } from '../core/worker.js';
 import { getStatement } from '../store/statements.js';
 import { emitAgentStatement } from '../store/agents.js';
 
-export const OpenQuestionResolverPayload = z.object({
+const OpenQuestionResolverPayloadSchema = Type.Object({
   // merged from StatementEvent by CronerScheduler:
-  id: z.string().uuid(),
-  kind: z.string(),
-  scopeType: z.string(),
-  scopeKey: z.string().nullable(),
+  id: Type.String({ format: 'uuid' }),
+  kind: Type.String(),
+  scopeType: Type.String(),
+  scopeKey: Type.Union([Type.String(), Type.Null()]),
   // no static config needed
 });
-export type OpenQuestionResolverPayload = z.infer<typeof OpenQuestionResolverPayload>;
+
+export const OpenQuestionResolverPayload = withValidation(OpenQuestionResolverPayloadSchema);
+export type OpenQuestionResolverPayload = Static<typeof OpenQuestionResolverPayloadSchema>;
 
 export const openQuestionResolverWorker: Worker<OpenQuestionResolverPayload> = {
   name: 'open-question-resolver',

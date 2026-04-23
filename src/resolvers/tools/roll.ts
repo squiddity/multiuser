@@ -1,13 +1,16 @@
-import { z } from 'zod';
+import { Type, type Static } from 'typebox';
+import { withValidation } from '../../lib/typebox.js';
 import type { LlmToolDefinition } from '../../core/llm-runtime.js';
 
-export const RollParams = z.object({
-  count: z.number().int().positive().describe('Number of dice to roll'),
-  sides: z.number().int().positive().describe('Number of sides per die'),
-  modifier: z.number().int().default(0).describe('Modifier added to the total'),
-  seed: z.string().optional().describe('Optional seed for deterministic results'),
+const RollParamsSchema = Type.Object({
+  count: Type.Integer({ minimum: 1, description: 'Number of dice to roll' }),
+  sides: Type.Integer({ minimum: 1, description: 'Number of sides per die' }),
+  modifier: Type.Optional(Type.Integer({ default: 0, description: 'Modifier added to the total' })),
+  seed: Type.Optional(Type.String({ description: 'Optional seed for deterministic results' })),
 });
-export type RollParams = z.infer<typeof RollParams>;
+
+export const RollParams = withValidation(RollParamsSchema);
+export type RollParams = Static<typeof RollParamsSchema>;
 
 function seededRandom(seed: string): () => number {
   let h = 0x811c9dc5;
@@ -22,7 +25,8 @@ function seededRandom(seed: string): () => number {
 }
 
 export function rollDice(params: RollParams): { values: number[]; total: number } {
-  const { count, sides, modifier, seed } = params;
+  const { count, sides, seed } = params;
+  const modifier = params.modifier ?? 0;
   const rand = seed ? seededRandom(seed) : Math.random;
 
   const values: number[] = [];

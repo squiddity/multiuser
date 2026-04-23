@@ -1,4 +1,5 @@
-import { z } from 'zod';
+import { Type, type Static } from 'typebox';
+import { withValidation } from '../lib/typebox.js';
 import type { Worker } from '../core/worker.js';
 import { appendStatement } from '../store/statements.js';
 import { listByScope } from '../store/statements.js';
@@ -10,18 +11,20 @@ const BRIEFING_WINDOW_MS = 5 * 60 * 1000; // 5 minutes
 const llmRuntime = createPiAiLlmRuntime();
 
 // Payload includes BOTH static config AND event fields so CronerScheduler can merge them
-export const BriefingGeneratorPayload = z.object({
+const BriefingGeneratorPayloadSchema = Type.Object({
   // Static config (registered at boot)
-  partyRoomId: z.string().uuid(),
-  adminRoomId: z.string().uuid(),
-  modelSpec: z.string(),
+  partyRoomId: Type.String({ format: 'uuid' }),
+  adminRoomId: Type.String({ format: 'uuid' }),
+  modelSpec: Type.String(),
   // Event fields (merged from StatementEvent by CronerScheduler)
-  id: z.string().uuid().optional(),
-  kind: z.string().optional(),
-  scopeType: z.string().optional(),
-  scopeKey: z.string().nullable().optional(),
+  id: Type.Optional(Type.String({ format: 'uuid' })),
+  kind: Type.Optional(Type.String()),
+  scopeType: Type.Optional(Type.String()),
+  scopeKey: Type.Optional(Type.Union([Type.String(), Type.Null()])),
 });
-export type BriefingGeneratorPayload = z.infer<typeof BriefingGeneratorPayload>;
+
+export const BriefingGeneratorPayload = withValidation(BriefingGeneratorPayloadSchema);
+export type BriefingGeneratorPayload = Static<typeof BriefingGeneratorPayloadSchema>;
 
 function makeBriefingContent(
   partyInputs: Array<{ id: string; kind: string; content: string }>,

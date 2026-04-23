@@ -37,7 +37,7 @@ export class AgentBackedResolver implements ResolverInterface {
     const rulesScope = this.config.rulesScope;
 
     let contextStatements: { id: string; content: string }[] = [];
-    if (rulesScope && req.contextStatements.length > 0) {
+    if (rulesScope && (req.contextStatements ?? []).length > 0) {
       try {
         const scope = { type: 'rules' as const, system: this.system, variant: 'base' as const };
         const results = await this.statementStore.retrieveByScopes([scope], {
@@ -130,10 +130,10 @@ export class AgentBackedResolver implements ResolverInterface {
     if (req.action.params && Object.keys(req.action.params).length > 0) {
       prompt += `Parameters: ${JSON.stringify(req.action.params)}\n`;
     }
-    if (req.modifiers.advantage) {
+    if (req.modifiers?.advantage) {
       prompt += 'Modifier: advantage\n';
     }
-    if (req.modifiers.disadvantage) {
+    if (req.modifiers?.disadvantage) {
       prompt += 'Modifier: disadvantage\n';
     }
     if (context.length > 0) {

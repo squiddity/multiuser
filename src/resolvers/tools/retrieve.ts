@@ -1,34 +1,39 @@
-import { z } from 'zod';
+import { Type, type Static } from 'typebox';
+import { withValidation } from '../../lib/typebox.js';
 import type { LlmToolDefinition } from '../../core/llm-runtime.js';
 import { retrieveByScopes } from '../../store/retrieval.js';
 import type { Scope } from '../../core/statement.js';
 
-export const RetrieveParams = z.object({
-  scopes: z
-    .array(
-      z.discriminatedUnion('type', [
-        z.object({ type: z.literal('world') }),
-        z.object({ type: z.literal('party'), partyId: z.string().uuid() }),
-        z.object({ type: z.literal('character'), characterId: z.string().uuid() }),
-        z.object({ type: z.literal('session'), sessionId: z.string().uuid() }),
-        z.object({ type: z.literal('meta'), roomId: z.string().uuid() }),
-        z.object({
-          type: z.literal('rules'),
-          system: z.string(),
-          variant: z.enum(['base', 'house']).default('base'),
-        }),
-        z.object({ type: z.literal('style'), worldId: z.string().uuid() }),
-        z.object({ type: z.literal('governance'), roomId: z.string().uuid() }),
-        z.object({ type: z.literal('mapping') }),
-        z.object({ type: z.literal('eval') }),
-      ]),
-    )
-    .min(1)
-    .describe('Scopes to retrieve from'),
-  query: z.string().optional().describe('Text search query'),
-  limit: z.number().int().positive().default(10).describe('Maximum results'),
+const ScopeSelectorSchema = Type.Union([
+  Type.Object({ type: Type.Literal('world') }),
+  Type.Object({ type: Type.Literal('party'), partyId: Type.String({ format: 'uuid' }) }),
+  Type.Object({ type: Type.Literal('character'), characterId: Type.String({ format: 'uuid' }) }),
+  Type.Object({ type: Type.Literal('session'), sessionId: Type.String({ format: 'uuid' }) }),
+  Type.Object({ type: Type.Literal('meta'), roomId: Type.String({ format: 'uuid' }) }),
+  Type.Object({
+    type: Type.Literal('rules'),
+    system: Type.String(),
+    variant: Type.Optional(
+      Type.Union([Type.Literal('base'), Type.Literal('house')], { default: 'base' }),
+    ),
+  }),
+  Type.Object({ type: Type.Literal('style'), worldId: Type.String({ format: 'uuid' }) }),
+  Type.Object({ type: Type.Literal('governance'), roomId: Type.String({ format: 'uuid' }) }),
+  Type.Object({ type: Type.Literal('mapping') }),
+  Type.Object({ type: Type.Literal('eval') }),
+]);
+
+const RetrieveParamsSchema = Type.Object({
+  scopes: Type.Array(ScopeSelectorSchema, {
+    minItems: 1,
+    description: 'Scopes to retrieve from',
+  }),
+  query: Type.Optional(Type.String({ description: 'Text search query' })),
+  limit: Type.Optional(Type.Integer({ minimum: 1, default: 10, description: 'Maximum results' })),
 });
-export type RetrieveParams = z.infer<typeof RetrieveParams>;
+
+export const RetrieveParams = withValidation(RetrieveParamsSchema);
+export type RetrieveParams = Static<typeof RetrieveParamsSchema>;
 
 export function createRetrieveTool(): LlmToolDefinition {
   return {
