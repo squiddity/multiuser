@@ -1,4 +1,7 @@
-import { complete, getModel } from '@mariozechner/pi-ai';
+import { Agent, type AgentTool } from '@mariozechner/pi-agent-core';
+import type { AssistantMessage } from '@mariozechner/pi-ai';
+import { getModel } from '@mariozechner/pi-ai';
+import { Type } from 'typebox';
 import type { LlmRuntime, LlmRuntimeRequest, LlmRuntimeResponse } from '../core/llm-runtime.js';
 
 function parseModelSpec(spec: string): { provider: string; modelId: string } {
@@ -14,11 +17,46 @@ function parseModelSpec(spec: string): { provider: string; modelId: string } {
   return { provider, modelId };
 }
 
-function extractText(message: Awaited<ReturnType<typeof complete>>): string {
+function assistantText(message: AssistantMessage): string {
   return message.content
     .filter((block): block is { type: 'text'; text: string } => block.type === 'text')
     .map((block) => block.text)
     .join('');
+}
+
+function serializeToolResult(result: unknown): string {
+  if (typeof result === 'string') return result;
+  if (result === null || result === undefined) return '';
+  try {
+    return JSON.stringify(result);
+  } catch {
+    return String(result);
+  }
+}
+
+function toAgentTools(request: LlmRuntimeRequest): AgentTool[] {
+  if (!request.tools || Object.keys(request.tools).length === 0) return [];
+
+  return Object.entries(request.tools).map(([name, tool]) => ({
+    name,
+    label: name,
+    description: tool.description,
+    parameters: Type.Any(),
+    prepareArguments: (args) => {
+      const parsed = tool.parameters.safeParse(args);
+      if (!parsed.success) {
+        throw new Error(parsed.error.message);
+      }
+      return parsed.data;
+    },
+    execute: async (_toolCallId, params) => {
+      const result = await tool.execute(params);
+      return {
+        content: [{ type: 'text', text: serializeToolResult(result) }],
+        details: result,
+      };
+    },
+  }));
 }
 
 export class PiAiLlmRuntime implements LlmRuntime {
@@ -26,30 +64,25 @@ export class PiAiLlmRuntime implements LlmRuntime {
     const { provider, modelId } = parseModelSpec(request.modelSpec);
     const model = getModel(provider as never, modelId as never);
 
-    const toolsSection = this.buildToolsSection(request);
-    const userPrompt = toolsSection ? `${request.prompt}\n\n${toolsSection}` : request.prompt;
-
-    const message = await complete(model, {
-      systemPrompt: request.systemPrompt,
-      messages: [{ role: 'user', content: userPrompt, timestamp: Date.now() }],
+    const agent = new Agent({
+      initialState: {
+        model,
+        systemPrompt: request.systemPrompt,
+        tools: toAgentTools(request),
+      },
     });
 
-    return { text: extractText(message) };
-  }
+    await agent.prompt(request.prompt);
 
-  private buildToolsSection(request: LlmRuntimeRequest): string {
-    if (!request.tools || Object.keys(request.tools).length === 0) return '';
+    const lastAssistant = [...agent.state.messages]
+      .reverse()
+      .find((msg): msg is AssistantMessage => msg.role === 'assistant');
 
-    const lines = Object.entries(request.tools).map(([name, tool]) => {
-      const shape = tool.parameters?._def ? '[zod schema]' : '[unknown schema]';
-      return `- ${name}: ${tool.description} ${shape}`;
-    });
+    if (!lastAssistant) {
+      return { text: '' };
+    }
 
-    return [
-      '## Available tools',
-      'This runtime does not execute tool calls directly. If a tool result is required, explain assumptions in your JSON output.',
-      ...lines,
-    ].join('\n');
+    return { text: assistantText(lastAssistant) };
   }
 }
 

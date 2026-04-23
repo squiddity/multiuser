@@ -40,5 +40,5 @@ If introduced, it should remain a runtime/session convenience layer and not repl
 
 - Keep model selection declarative per agent role.
 - Keep tool policies and scope checks at the domain boundary.
-- The current pi runtime adapter accepts local tool descriptors but does not execute a native tool loop yet; resolver behavior should remain robust when tool outputs are unavailable.
+- The pi runtime adapter executes tool-enabled turns through `pi-agent-core` and maps local tool definitions into runtime tool contracts.
 - Persist usage/cost telemetry in first-class records tied to statement/turn IDs.
