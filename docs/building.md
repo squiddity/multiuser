@@ -95,6 +95,14 @@ Do not drive the harness by piping a finite input stream into `pnpm dev`; that c
 
 See `docs/cli-harness-driving.md` for the interaction contract and rationale.
 
+### Output mode for interactive sessions
+
+When running commands in an interactive/shared terminal session:
+
+- Run **demo scripts** and **long-running test commands** in streaming/live-output mode so observers can watch progress in real time (for example: `pnpm demo:cli`, `pnpm test:integration`, `pnpm test:api`).
+- Run **unit tests** in standard captured-output mode (`pnpm test`), since they are typically fast.
+- Run **build, typecheck, and formatting** commands in standard captured-output mode.
+
 ## Tests
 
 ### Pre-commit checklist (REQUIRED)
