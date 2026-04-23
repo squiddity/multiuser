@@ -248,7 +248,7 @@ export interface Resolver {
 // core/worker.ts
 export interface Worker<TPayload> {
   name: string;
-  schema: z.ZodType<TPayload>;
+  schema: Schema<TPayload>;
   handler(payload: TPayload, ctx: WorkerContext): Promise<void>;
 }
 
@@ -292,7 +292,7 @@ Per `runtime-and-processing.md`:
 
 - **Tier 0 (v1):** `CronerScheduler` in-process. Workers run in same process; crash == restart + re-read store (workers are idempotent).
 - **Tier 1:** Workers split behind a Redis/BullMQ queue or Node cluster; Scheduler impl still local cron. Statement store unchanged.
-- **Tier 3:** Replace `Scheduler` impl with `TemporalScheduler` or `InngestScheduler`. Mastra workflows that need durability get promoted to that backend — Mastra supports Inngest natively, Temporal via adapter. Workers that don't need durability stay in-process.
+- **Tier 3:** Replace `Scheduler` impl with `TemporalScheduler` or `InngestScheduler`. Workflows that need durability get promoted to that backend; workers that don't need durability stay in-process.
 
 ## Configuration
 
@@ -319,6 +319,6 @@ Per `runtime-and-processing.md`:
 
 - Embedding model choice — local (ONNX) or hosted (Anthropic, OpenAI, Voyage)? Trades cost/privacy/latency; default: hosted Voyage or OpenAI `text-embedding-3-small` for v1.
 - Postgres managed or self-hosted in v1 dev? Compose-hosted for dev; production leans managed (Neon, Supabase) for ops simplicity.
-- Single Mastra instance running all agents/workflows, or separate processes per role? Single process for v1; split later if load demands.
+- Single runtime process running all agents/workflows, or separate processes per role? Single process for v1; split later if load demands.
 - Discord bot deployment — always-on long poll vs. sharded clusters? Single shard v1; shard when guild count > ~2000.
 - Secrets management — `.env` with dotenv-vault or a secrets manager from day one? Start with dotenv; migrate when multi-environment.

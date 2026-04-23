@@ -69,7 +69,7 @@ Endpoints:
 
 All routes use existing store functions (`appendStatement`, `appendAndEmit`, `readStatement`, `queryStatements`). No new business logic — the API is a thin HTTP adapter over the existing domain layer.
 
-Request/response types come from the existing Zod schemas in `core/statement.ts`. The API validates input with those schemas and returns validated output.
+Request/response types come from the existing schema contracts in `core/statement.ts`. The API validates input with those schemas and returns validated output.
 
 ### Task 3. Wire HTTP server into `src/index.ts`
 
@@ -186,9 +186,9 @@ Mark Task 4 as done (✅) in `docs/milestones/0001-vertical-slice.md`. Add the n
 
 ## Key constraints
 
-- **No new business logic in the API layer.** The API is a thin HTTP adapter over existing store functions and Zod schemas. If logic doesn't exist yet, the API returns 501 or doesn't expose it.
+- **No new business logic in the API layer.** The API is a thin HTTP adapter over existing store functions and schema contracts. If logic doesn't exist yet, the API returns 501 or doesn't expose it.
 - **The API is internal-facing for now.** No authentication, no rate limiting. These become relevant when the Discord bot or external callers use it, at which point we add middleware.
-- **Test independence.** `test-api/` shares zero imports with `src/`. If the Zod schemas change, the tests break (that's the point — they're contract tests).
+- **Test independence.** `test-api/` shares zero imports with `src/`. If API contracts change, the tests break (that's the point — they're contract tests).
 - **Python deps are minimal.** Only `pytest` and `httpx`. No Django, no FastAPI, no test client frameworks.
 
 ## How this relates to the existing test suite

@@ -38,14 +38,14 @@ pnpm test
 ## Layout
 
 ```
-src/core/        domain types (Zod schemas + TS interfaces)
+src/core/        domain types (TypeBox schemas + TS interfaces)
 src/store/       Postgres + pgvector, Drizzle schema, append-only statements
 src/scheduler/   Scheduler interface + tier-0 croner impl
 src/workers/     worker registry
 src/resolvers/   rules-resolver registry
 src/models/      model provider registry (AI SDK providers, swappable per agent)
 src/adapters/    platform adapters (discord v1)
-src/agents/      Mastra agents + workflows (to be added)
+src/agents/      agent role implementations + workflows
 src/config/      env + logger
 src/eval/        eval harness (to be added)
 world/           seed authoring content (ingested)

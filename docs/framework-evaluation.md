@@ -60,7 +60,7 @@ The following are starting points, not a shortlist. Each should be assessed agai
 - **opencode plugin** — host is a single-user coding agent; reuses its session/memory model. Likely poor fit for the multi-tenant shape, but worth a concrete disqualification rather than a hand-wave.
 - **Letta** — memory blocks are first-class and scoped; strong on memory partitioning, opinionated model.
 - **LangGraph** — bring-your-own state schema and checkpointer; multi-tenant scoping falls out naturally, more construction required.
-- **Mastra** (TS) — pluggable memory, threads as a primitive.
+- **TypeScript workflow runtime** — pluggable memory, threads as a primitive.
 - **Claude Agent SDK** — minimal host; session store is the integrator's responsibility.
 - **Others to consider**: Pydantic AI, Agno, CrewAI, Vercel AI SDK + custom memory, roll-our-own.
 

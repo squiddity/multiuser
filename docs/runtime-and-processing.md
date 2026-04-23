@@ -16,7 +16,7 @@ Short list:
 
 - **Claude Agent SDK** — minimal. You bring your own state, scheduling, transport. Good if we want maximum control and minimum framework opinion.
 - **LangGraph** (Python) — graph-based state machine; checkpointers persist graph state; multi-tenant patterns are idiomatic (thread-id keyed state, metadata filters on retrieval). Strong ergonomic fit for long-running, branching processes (party turn, briefing job, canonization proposer as distinct graphs sharing a store).
-- **Mastra** (TypeScript) — workflows, threads, pluggable memory. Good if we want to stay in TS for closer alignment with Discord client libraries.
+- **TypeScript workflow runtimes** — workflows, threads, pluggable memory. Good if we want to stay in TS for closer alignment with Discord client libraries.
 
 All three leave the statement store, the scheduler, and the eval harness to us. That's correct — those are the load-bearing pieces and we want them swappable.
 
@@ -96,12 +96,12 @@ Only a subset of workers need this (multi-step, approval-gated, multi-day). Pure
 
 ### Backend tiers
 
-| Tier                      | Wall-clock scheduler                                       | Durable workflow                           | When to use                                                          |
-| ------------------------- | ---------------------------------------------------------- | ------------------------------------------ | -------------------------------------------------------------------- |
-| **0. In-process**         | `node-cron` / `APScheduler` / `croner`                     | in-memory state machines, no durability    | dev, single-instance, proving the model                              |
-| **1. OS-native**          | `systemd` timers invoking worker CLI                       | none                                       | small prod, predictable load, operational simplicity                 |
-| **2. Framework-native**   | LangGraph Platform cron jobs; Mastra + scheduled workflows | framework's built-in workflow engine       | when already committed to that framework's hosted runtime            |
-| **3. Dedicated services** | **Temporal** schedules; **Inngest** cron                   | Temporal workflows; Inngest step functions | concurrent volume, crash-safety, retries, long workflows, visibility |
+| Tier                      | Wall-clock scheduler                                        | Durable workflow                           | When to use                                                          |
+| ------------------------- | ----------------------------------------------------------- | ------------------------------------------ | -------------------------------------------------------------------- |
+| **0. In-process**         | `node-cron` / `APScheduler` / `croner`                      | in-memory state machines, no durability    | dev, single-instance, proving the model                              |
+| **1. OS-native**          | `systemd` timers invoking worker CLI                        | none                                       | small prod, predictable load, operational simplicity                 |
+| **2. Framework-native**   | LangGraph Platform cron jobs; TS workflow runtime schedules | framework's built-in workflow engine       | when already committed to that framework's hosted runtime            |
+| **3. Dedicated services** | **Temporal** schedules; **Inngest** cron                    | Temporal workflows; Inngest step functions | concurrent volume, crash-safety, retries, long workflows, visibility |
 
 The contract is: **workers don't know which tier fired them.** Moving from tier 0 to tier 3 is a config and deployment change, not a rewrite. This is why the scheduler is behind an interface and why worker state lives in the statement store rather than in the scheduler's memory.
 
@@ -227,11 +227,11 @@ Eval runs are themselves statements (in an `eval` scope), tied to model version 
 
 - `memory-model.md` — defines the statements and scopes this runtime produces and reads.
 - `rooms-and-roles.md` — defines the authorization boundaries that workers enforce at retrieval time and the flow records interceptors act on.
-- `framework-evaluation.md` — this doc narrows the candidate list to thin agent runtimes (Claude Agent SDK, LangGraph, Mastra) and the store/scheduler choices they leave to us.
+- `framework-evaluation.md` — this doc narrows the candidate list to thin agent runtimes and the store/scheduler choices they leave to us.
 
 ## Open questions
 
-- Language / stack: Python (LangGraph, richer ML ecosystem) or TypeScript (Mastra, tighter Discord integration)? Affects every other choice below.
+- Language / stack: Python (LangGraph, richer ML ecosystem) or TypeScript (tighter Discord integration)? Affects every other choice below.
 - Start Postgres-first or SQLite-first? SQLite is trivially deployable; Postgres is the eventual target. `pgvector` decides this one if we go Postgres.
 - Should the consistency auditor run on every narration turn (latency cost, better safety) or asynchronously (cheaper, some contradiction lag)?
 - Where does the eval harness live — same repo, same store, separate scope? (Leaning: same store, `eval` scope, so eval results become first-class records.)

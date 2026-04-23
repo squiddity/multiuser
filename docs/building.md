@@ -123,7 +123,7 @@ pnpm test        # unit tests
 pnpm test
 ```
 
-Runs Vitest. Covers Zod schema parsing, worker registry, and other pure-logic tests.
+Runs Vitest. Covers schema parsing, worker registry, and other pure-logic tests.
 
 ### Integration tests (require Postgres)
 

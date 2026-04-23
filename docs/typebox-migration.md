@@ -2,7 +2,7 @@
 
 ## Purpose
 
-Plan a full migration from Zod to TypeBox while preserving current runtime behavior and schema contracts.
+Plan and record migration to TypeBox while preserving runtime behavior and schema contracts.
 
 ## Why migrate
 
@@ -23,14 +23,14 @@ Migration completed for v1 codepaths:
 - Runtime validation and schema contracts use TypeBox 1.x.
 - Worker payloads, resolver contracts, tool parameter schemas, statement/scope/room contracts, API body validation, and env validation are all TypeBox-backed.
 - Local parse/safeParse compatibility helpers live in `src/lib/typebox.ts` to preserve existing boundary ergonomics while using TypeBox validators.
-- Direct Zod dependency has been removed from project runtime code.
+- Legacy validator dependency has been removed from project runtime code.
 
 ## Phases
 
 ### Phase 1: Boundary-first adapters
 
 - Introduce shared schema adapter helpers where needed.
-- Keep existing Zod validation in place.
+- Keep existing validation in place.
 - Add parity tests for representative schema families.
 
 ### Phase 2: Core contracts
@@ -45,10 +45,10 @@ Migration completed for v1 codepaths:
 - Migrate API request/response schemas.
 - Add snapshot/parity checks for serialized schema artifacts.
 
-### Phase 4: Remove Zod runtime dependency
+### Phase 4: Remove legacy validator runtime dependency
 
-- Remove remaining Zod imports. ✅
-- Keep compatibility shims only if external consumers still depend on Zod-shaped exports. (Not required for current v1 boundaries.)
+- Remove remaining legacy-validator imports. ✅
+- Keep compatibility shims only if external consumers still depend on legacy-shaped exports. (Not required for current v1 boundaries.)
 
 ## Acceptance criteria
 

@@ -81,7 +81,7 @@ pnpm test:integration
 - `docs/runtime-and-processing.md` — workers, triggers, scheduler tiers, open-question protocol, consistency metrics.
 - `docs/llm-runtime.md` — LLM runtime layering and pi SDK integration posture.
 - `docs/statement-store-abstraction.md` — canonical statement-store contract and backend swap constraints.
-- `docs/typebox-migration.md` — phased migration plan from Zod to TypeBox.
+- `docs/typebox-migration.md` — migration record for TypeBox adoption.
 - `docs/platform-adapter.md` — platform-agnostic adapter interface; Discord v1 specifics.
 - `docs/ui-and-interactions.md` — interaction surfaces, Discord UI patterns, deferred media.
 - `docs/rules-resolution.md` — Resolver interface; agent-backed vs. deterministic; rulings-as-canon.
