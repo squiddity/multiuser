@@ -247,11 +247,17 @@ Tests are pure HTTP calls — they import nothing from `src/`. If the API contra
 
 ### Test layers
 
-| Layer          | What                   | Runs where                    | Tool   |
-| -------------- | ---------------------- | ----------------------------- | ------ |
-| Unit           | Pure logic, no DB      | Host, `pnpm test`             | Vitest |
-| Integration    | DB-roundtrip internals | Host, `pnpm test:integration` | Vitest |
-| API / hermetic | HTTP contract          | Host → Docker                 | pytest |
+| Layer          | What                                   | Runs where                    | Tool   |
+| -------------- | -------------------------------------- | ----------------------------- | ------ |
+| Unit           | Pure logic, no DB                      | Host, `pnpm test`             | Vitest |
+| Integration    | DB-roundtrip internals, worker triggers| Host, `pnpm test:integration` | Vitest |
+| API / hermetic | HTTP contract (CRUD, scope isolation)  | Host → Docker                 | pytest |
+
+**Test scope notes:**
+
+- **Hermetic API tests** (`test-api/`) focus on the HTTP contract: statement CRUD, scope isolation, open-question flow via API. They don't test worker-triggered features (briefing-generator, live-responder) because those require `DEFAULT_MODEL_SPEC` configuration.
+- **Worker-triggered features** (briefing-generator, live-responder) are tested in `test/integration/` where the full runtime is available.
+- **Integration tests** use pre-seeded room IDs (`party-1`, `admin-1`) and cover end-to-end flows including model interactions.
 
 ## CI checklist
 

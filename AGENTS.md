@@ -61,6 +61,7 @@ pnpm test:integration
 - **Hermetic API tests**: `pnpm test:api`
   - Script auto-creates `.venv-api-tests` and installs `pytest`/`httpx` when missing.
   - Optional overrides: `PYTHON_BIN=/path/to/python3` and `API_TEST_VENV=/custom/path`.
+  - **HTTP contract only** (CRUD, scope isolation). Worker features require model config, so they're tested in integration tests.
 - **Type check**: `npx tsc --noEmit`
 - **Format**: `npx prettier --write .` (fix) or `npx prettier --check .` (check)
 - **All CI**: typecheck, unit tests, integration tests, format check

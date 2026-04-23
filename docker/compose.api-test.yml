@@ -32,6 +32,9 @@ services:
       API_PORT: '3000'
       NODE_ENV: test
       LOG_LEVEL: warn
+      # NOTE: Worker features (briefing-generator, live-responder) require DEFAULT_MODEL_SPEC.
+      # Hermetic API tests focus on HTTP contract (CRUD, scope isolation).
+      # Worker-triggered features are tested in integration tests instead.
     ports:
       - '3000:3000'
     healthcheck:
