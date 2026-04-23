@@ -9,6 +9,7 @@ import { CronerScheduler } from '../scheduler/croner-impl.js';
 import { EventBus } from '../core/events.js';
 import { liveResponderWorker } from '../workers/live-responder.js';
 import { openQuestionResolverWorker } from '../workers/open-question-resolver.js';
+import { briefingGeneratorWorker } from '../workers/briefing-generator.js';
 import { appendIndexAndEmit } from '../store/emit.js';
 import { listByScope, getStatement } from '../store/statements.js';
 import { canonizeOpenQuestion, CanonizeError } from '../store/canonize.js';
@@ -225,12 +226,38 @@ async function main(): Promise<void> {
   const workers = new WorkerRegistry();
   const scheduler = new CronerScheduler(workers, logger, events);
 
+  workers.register(briefingGeneratorWorker);
   workers.register(openQuestionResolverWorker);
   await scheduler.schedule(
     { type: 'event', predicate: { kind: 'authoring-decision', scopeType: 'governance' } },
     'open-question-resolver',
     {},
   );
+
+  // Register briefing generator: triggers on party activity events
+  // Worker itself checks for idle windows and groups recent statements
+  if (env.DEFAULT_MODEL_SPEC) {
+    const briefingConfig = {
+      partyRoomId: PARTY_ROOM.id,
+      adminRoomId: ADMIN_ROOM.id,
+      modelSpec: env.DEFAULT_MODEL_SPEC,
+    };
+    await scheduler.schedule(
+      { type: 'event', predicate: { kind: 'dialogue', scopeType: 'party' } },
+      'briefing-generator',
+      briefingConfig,
+    );
+    await scheduler.schedule(
+      { type: 'event', predicate: { kind: 'pose', scopeType: 'party' } },
+      'briefing-generator',
+      briefingConfig,
+    );
+    await scheduler.schedule(
+      { type: 'event', predicate: { kind: 'narration', scopeType: 'party' } },
+      'briefing-generator',
+      briefingConfig,
+    );
+  }
 
   if (env.DEFAULT_MODEL_SPEC) {
     workers.register(liveResponderWorker);
