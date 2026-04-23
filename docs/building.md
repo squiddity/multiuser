@@ -247,11 +247,11 @@ Tests are pure HTTP calls — they import nothing from `src/`. If the API contra
 
 ### Test layers
 
-| Layer          | What                                   | Runs where                    | Tool   |
-| -------------- | -------------------------------------- | ----------------------------- | ------ |
-| Unit           | Pure logic, no DB                      | Host, `pnpm test`             | Vitest |
-| Integration    | DB-roundtrip internals, worker triggers| Host, `pnpm test:integration` | Vitest |
-| API / hermetic | HTTP contract (CRUD, scope isolation)  | Host → Docker                 | pytest |
+| Layer          | What                                    | Runs where                    | Tool   |
+| -------------- | --------------------------------------- | ----------------------------- | ------ |
+| Unit           | Pure logic, no DB                       | Host, `pnpm test`             | Vitest |
+| Integration    | DB-roundtrip internals, worker triggers | Host, `pnpm test:integration` | Vitest |
+| API / hermetic | HTTP contract (CRUD, scope isolation)   | Host → Docker                 | pytest |
 
 **Test scope notes:**
 
