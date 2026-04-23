@@ -82,15 +82,19 @@ describe('briefing-generator', () => {
 
     // Trigger briefing generator WITH the statement's ID (simulating event trigger)
     // This is what CronerScheduler does when merging event data
-    await workers.dispatch('briefing-generator', {
-      partyRoomId: PARTY_ROOM_ID,
-      adminRoomId: ADMIN_ROOM_ID,
-      modelSpec: 'test-model',
-      id: dialogueId, // The triggering statement's ID
-      scopeType: 'party', // From the event
-      scopeKey: PARTY_ROOM_ID,
-      kind: 'dialogue',
-    }, ctx);
+    await workers.dispatch(
+      'briefing-generator',
+      {
+        partyRoomId: PARTY_ROOM_ID,
+        adminRoomId: ADMIN_ROOM_ID,
+        modelSpec: 'test-model',
+        id: dialogueId, // The triggering statement's ID
+        scopeType: 'party', // From the event
+        scopeKey: PARTY_ROOM_ID,
+        kind: 'dialogue',
+      },
+      ctx,
+    );
 
     // Assert briefing was emitted in governance scope
     const adminBriefings = await listByScope(
@@ -117,38 +121,50 @@ describe('briefing-generator', () => {
     testStatementIds.push(dialogueId);
 
     // First trigger - include the statement ID to simulate event trigger
-    await workers.dispatch('briefing-generator', {
-      partyRoomId: PARTY_ROOM_ID,
-      adminRoomId: ADMIN_ROOM_ID,
-      modelSpec: 'test-model',
-      id: dialogueId,
-      scopeType: 'party',
-      scopeKey: PARTY_ROOM_ID,
-      kind: 'pose',
-    }, ctx);
+    await workers.dispatch(
+      'briefing-generator',
+      {
+        partyRoomId: PARTY_ROOM_ID,
+        adminRoomId: ADMIN_ROOM_ID,
+        modelSpec: 'test-model',
+        id: dialogueId,
+        scopeType: 'party',
+        scopeKey: PARTY_ROOM_ID,
+        kind: 'pose',
+      },
+      ctx,
+    );
 
     // Count briefings before second trigger
-    const beforeCount = (await listByScope(
-      { type: 'governance', roomId: ADMIN_ROOM_ID },
-      { kind: 'briefing', limit: 100 },
-    )).length;
+    const beforeCount = (
+      await listByScope(
+        { type: 'governance', roomId: ADMIN_ROOM_ID },
+        { kind: 'briefing', limit: 100 },
+      )
+    ).length;
 
     // Trigger again immediately with SAME ID (should skip due to idempotency)
-    await workers.dispatch('briefing-generator', {
-      partyRoomId: PARTY_ROOM_ID,
-      adminRoomId: ADMIN_ROOM_ID,
-      modelSpec: 'test-model',
-      id: dialogueId, // Same trigger ID = should skip
-      scopeType: 'party',
-      scopeKey: PARTY_ROOM_ID,
-      kind: 'pose',
-    }, ctx);
+    await workers.dispatch(
+      'briefing-generator',
+      {
+        partyRoomId: PARTY_ROOM_ID,
+        adminRoomId: ADMIN_ROOM_ID,
+        modelSpec: 'test-model',
+        id: dialogueId, // Same trigger ID = should skip
+        scopeType: 'party',
+        scopeKey: PARTY_ROOM_ID,
+        kind: 'pose',
+      },
+      ctx,
+    );
 
     // Count after second trigger
-    const afterCount = (await listByScope(
-      { type: 'governance', roomId: ADMIN_ROOM_ID },
-      { kind: 'briefing', limit: 100 },
-    )).length;
+    const afterCount = (
+      await listByScope(
+        { type: 'governance', roomId: ADMIN_ROOM_ID },
+        { kind: 'briefing', limit: 100 },
+      )
+    ).length;
 
     // Should not have created a new briefing (same sources already briefed)
     expect(afterCount).toBe(beforeCount);

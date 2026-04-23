@@ -19,7 +19,9 @@ describe('milestone 0002 deterministic fixtures', () => {
   });
 
   it('keeps steering fixture contract-valid', () => {
-    const parsed = SteeringStatementContract.parse(steeringApplicationFixture.expectedSteeringStatement);
+    const parsed = SteeringStatementContract.parse(
+      steeringApplicationFixture.expectedSteeringStatement,
+    );
 
     expect(parsed.fields.status).toBe('active');
     expect(parsed.fields.constraints).toContain('No slapstick');

@@ -40,7 +40,13 @@ export const briefingGeneratorWorker: Worker<BriefingGeneratorPayload> = {
   schema: BriefingGeneratorPayload,
 
   async handler(payload, ctx) {
-    const { partyRoomId, adminRoomId, modelSpec, id: triggerId, scopeType: triggerScopeType } = payload;
+    const {
+      partyRoomId,
+      adminRoomId,
+      modelSpec,
+      id: triggerId,
+      scopeType: triggerScopeType,
+    } = payload;
     const windowStart = new Date(Date.now() - BRIEFING_WINDOW_MS);
 
     // Validate that we have a valid trigger from a party statement
@@ -50,14 +56,14 @@ export const briefingGeneratorWorker: Worker<BriefingGeneratorPayload> = {
     }
 
     if (triggerScopeType !== 'party') {
-      ctx.logger.info({ partyRoomId, triggerScopeType }, 'briefing-generator: trigger not from party scope, skipping');
+      ctx.logger.info(
+        { partyRoomId, triggerScopeType },
+        'briefing-generator: trigger not from party scope, skipping',
+      );
       return;
     }
 
-    const recentInputs = await listByScope(
-      { type: 'party', partyId: partyRoomId },
-      { limit: 20 },
-    );
+    const recentInputs = await listByScope({ type: 'party', partyId: partyRoomId }, { limit: 20 });
 
     const partyInputs = recentInputs
       .filter((r) => {
