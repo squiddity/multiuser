@@ -16,7 +16,7 @@ const showDbNotices = process.env.DEMO_SHOW_DB_NOTICES === '1';
 const logLlmInput = process.env.DEMO_LOG_LLM_INPUT !== '0';
 const demoScenario = (process.env.DEMO_SCENARIO?.trim() || 'vertical-slice').toLowerCase();
 
-const SUPPORTED_SCENARIOS = new Set(['vertical-slice', 'briefing-only']);
+const SUPPORTED_SCENARIOS = new Set(['vertical-slice', 'briefing-only', 'steering-application']);
 
 function createSql(databaseUrl) {
   return postgres(databaseUrl, {
@@ -70,6 +70,29 @@ function buildSteps(scenario) {
     return steps;
   }
 
+  if (scenario === 'steering-application') {
+    add(1500, 'help');
+    add(1000, '/ls');
+    // Baseline narration turn before any steering
+    add(1000, '/say We approach the north gate in the dim dusk.');
+    // Wait for narrator (if live) to respond
+    add(hasLiveResponder ? 10000 : 1500, '/ls');
+
+    // Switch to admin and issue steering
+    add(1500, 'room admin-1');
+    add(1000, '/steer tone Make the scene tense and ominous; no slapstick.');
+    // Let steering-formalizer worker fire
+    add(2500, '/ls');
+
+    // Back to party and trigger another narration turn
+    add(1500, 'room party-1');
+    add(1000, '/say We step closer to the gate.');
+    add(hasLiveResponder ? 12000 : 1500, '/ls');
+
+    add(1200, 'exit');
+    return steps;
+  }
+
   throw new Error(`unsupported DEMO_SCENARIO: ${scenario}`);
 }
 
@@ -83,6 +106,7 @@ async function resetDemoScopes() {
       delete from statements
       where (scope_type = 'party' and scope_key = ${PARTY_ROOM_ID})
          or (scope_type = 'governance' and scope_key = ${ADMIN_ROOM_ID})
+         or (scope_type = 'world' and scope_key is null and kind = 'canon-reference' and author_id = 'decision-formalizer')
          or (scope_type = 'world' and scope_key is null and kind = 'canon-reference' and author_id = 'steering-formalizer')
     `;
     process.stdout.write(
@@ -145,7 +169,7 @@ async function assessVerticalSlice(sql) {
     where scope_type = 'world'
       and scope_key is null
       and kind = 'canon-reference'
-      and author_id = 'steering-formalizer'
+      and author_id = 'decision-formalizer'
     order by created_at desc
     limit 1
   `;
@@ -220,6 +244,75 @@ async function assessVerticalSlice(sql) {
   return checks;
 }
 
+async function assessSteeringApplication(sql) {
+  const checks = {};
+
+  const steeringRows = await sql`
+    select id, scope_type, scope_key, sources, fields
+    from statements
+    where scope_type = 'governance'
+      and scope_key = ${ADMIN_ROOM_ID}
+      and kind = 'steering'
+    order by created_at desc
+    limit 5
+  `;
+
+  if (steeringRows.length === 0) {
+    process.stdout.write('[demo-assess] no steering statement found in admin governance scope\n');
+    checks.steering_emitted = {
+      status: 'review',
+      reason: 'no steering emitted; formalizer may not have run or /steer failed',
+    };
+    checks.steering_applied_in_prompt = {
+      status: 'not-run',
+      reason: 'prompt inclusion check skipped because no steering exists',
+    };
+    return checks;
+  }
+
+  const latest = steeringRows[0];
+  const fields = latest.fields ?? {};
+  const scopeValid = latest.scope_type === 'governance' && latest.scope_key === ADMIN_ROOM_ID;
+  const statusValid = fields.status === 'active';
+  const hasSources = Array.isArray(latest.sources) && latest.sources.length > 0;
+
+  checks.steering_emitted = {
+    status: scopeValid && statusValid && hasSources ? 'pass' : 'review',
+    reason:
+      scopeValid && statusValid && hasSources
+        ? 'steering statement emitted with active status and source linkage'
+        : 'steering statement exists but fails one of: scope, status=active, source linkage',
+    evidence: {
+      statementId: latest.id,
+      scopeType: latest.scope_type,
+      scopeKey: latest.scope_key,
+      status: fields.status,
+      sourceCount: Array.isArray(latest.sources) ? latest.sources.length : 0,
+    },
+  };
+
+  process.stdout.write(
+    `[demo-assess] latest steering id=${latest.id} status=${fields.status ?? '(none)'}\n`,
+  );
+
+  if (!hasLiveResponder) {
+    checks.steering_applied_in_prompt = {
+      status: 'not-run',
+      reason:
+        'DEFAULT_MODEL_SPEC missing; narrator did not run so prompt inclusion is unverifiable',
+    };
+    return checks;
+  }
+
+  checks.steering_applied_in_prompt = {
+    status: 'review',
+    reason:
+      'narrator ran with live model; verify prompt inclusion via DEMO_LOG_LLM_INPUT=1 logs (manual)',
+  };
+
+  return checks;
+}
+
 async function assessBriefingOnly(sql) {
   const checks = {};
 
@@ -283,6 +376,7 @@ async function assessDemoResults({
     runId: `${startedAt}-${Math.random().toString(36).slice(2, 8)}`,
     scenarioId: scenario,
     milestone: scenario === 'vertical-slice' ? '0001' : '0002',
+    // 'briefing-only' and 'steering-application' belong to milestone 0002
     modelSpec: process.env.DEFAULT_MODEL_SPEC ?? 'none',
     startedAt,
     finishedAt,
@@ -316,6 +410,8 @@ async function assessDemoResults({
       scorecard.checks = await assessVerticalSlice(sql);
     } else if (scenario === 'briefing-only') {
       scorecard.checks = await assessBriefingOnly(sql);
+    } else if (scenario === 'steering-application') {
+      scorecard.checks = await assessSteeringApplication(sql);
     } else {
       scorecard.checks = {
         scenario_supported: {

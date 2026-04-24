@@ -1,11 +1,13 @@
 import { loadAgentPrompt } from '../store/content.js';
 import { getRoom } from '../store/rooms.js';
+import { listActiveSteeringFor } from '../store/steering.js';
 import { createPiAiLlmRuntime } from '../models/pi-runtime.js';
 import { createStatementStore } from '../store/statement-store.js';
 import { env } from '../config/env.js';
 import { logger } from '../config/logger.js';
 import type { LlmRuntime } from '../core/llm-runtime.js';
 import type { StatementStore } from '../core/statement-store.js';
+import type { SteeringCandidate } from '../core/briefing-steering.js';
 
 export type NarratorOutputKind = 'narration' | 'pose' | 'invention';
 
@@ -51,6 +53,11 @@ export class Narrator {
           modelSpec: this.config.modelSpec,
           systemPrompt: prompt.content,
           userPrompt,
+          activeSteering: context.activeSteering.map((s) => ({
+            id: s.id,
+            intent: s.fields.intent,
+            direction: s.fields.direction,
+          })),
         },
         'narrator: llm input',
       );
@@ -109,7 +116,12 @@ export class Narrator {
   private async buildContext(
     roomId: string,
     userId: string,
-  ): Promise<{ statements: string; worldCanon: string; partyExperience: string }> {
+  ): Promise<{
+    statements: string;
+    worldCanon: string;
+    partyExperience: string;
+    activeSteering: SteeringCandidate[];
+  }> {
     const rows = await this.statementStore.retrieveForUserRoom(userId, roomId, { limit: 20 });
 
     const worldCanon = rows
@@ -127,20 +139,44 @@ export class Narrator {
       .map((r) => `[${r.authorId}] ${r.content}`)
       .join('\n');
 
+    const activeSteering = this.config.adminRoomId
+      ? await listActiveSteeringFor(roomId, this.config.adminRoomId)
+      : [];
+
     return {
       statements: recentStatements,
       worldCanon: worldCanon || '(no world canon yet)',
       partyExperience: partyExperience || '(no party experience yet)',
+      activeSteering,
     };
   }
 
   private buildUserPrompt(
-    context: { statements: string; worldCanon: string; partyExperience: string },
+    context: {
+      statements: string;
+      worldCanon: string;
+      partyExperience: string;
+      activeSteering: SteeringCandidate[];
+    },
     recentContent?: string,
   ): string {
     let prompt = `## Recent statements in this session\n${context.statements}\n\n`;
     prompt += `## World canon\n${context.worldCanon}\n\n`;
     prompt += `## This party's experience\n${context.partyExperience}\n\n`;
+
+    if (context.activeSteering.length > 0) {
+      prompt += `## Active GM steering (apply to this turn)\n`;
+      for (const s of context.activeSteering) {
+        const bits: string[] = [`intent=${s.fields.intent}`];
+        if (s.fields.tone) bits.push(`tone: ${s.fields.tone}`);
+        if (s.fields.constraints && s.fields.constraints.length > 0) {
+          bits.push(`constraints: ${s.fields.constraints.join('; ')}`);
+        }
+        bits.push(`direction: ${s.fields.direction}`);
+        prompt += `- ${bits.join(' | ')}\n`;
+      }
+      prompt += `\n`;
+    }
 
     if (recentContent) {
       prompt += `## Player action\n${recentContent}\n\n`;

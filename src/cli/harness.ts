@@ -10,9 +10,12 @@ import { EventBus } from '../core/events.js';
 import { liveResponderWorker } from '../workers/live-responder.js';
 import { openQuestionResolverWorker } from '../workers/open-question-resolver.js';
 import { briefingGeneratorWorker } from '../workers/briefing-generator.js';
+import { steeringFormalizerWorker } from '../workers/steering-formalizer.js';
 import { appendIndexAndEmit } from '../store/emit.js';
 import { listByScope, getStatement } from '../store/statements.js';
 import { canonizeOpenQuestion, CanonizeError } from '../store/canonize.js';
+import { emitSteeringRequest, SteeringError } from '../store/steering.js';
+import type { SteeringIntent } from '../core/briefing-steering.js';
 import type { StatementEvent } from '../core/events.js';
 import type { Scope } from '../core/statement.js';
 
@@ -148,6 +151,54 @@ async function handleNarrate(events: EventBus, text: string): Promise<void> {
   );
 }
 
+const STEERING_INTENTS: readonly SteeringIntent[] = [
+  'tone',
+  'constraint',
+  'direction',
+  'pacing',
+  'spotlight',
+  'safety',
+  'other',
+];
+
+async function handleSteer(events: EventBus, args: string[]): Promise<void> {
+  const [intent, ...rest] = args;
+  if (!intent || rest.length === 0) {
+    printLine('  usage: /steer <intent> <direction...>');
+    printLine(`  intents: ${STEERING_INTENTS.join(', ')}`);
+    return;
+  }
+  if (!STEERING_INTENTS.includes(intent as SteeringIntent)) {
+    printLine(`  invalid intent "${intent}". allowed: ${STEERING_INTENTS.join(', ')}`);
+    return;
+  }
+  if (currentRoom.id !== ADMIN_ROOM.id) {
+    printLine('  /steer must be issued from the admin room (use `room admin-1`)');
+    return;
+  }
+
+  const direction = rest.join(' ').trim();
+  try {
+    await emitSteeringRequest(
+      {
+        userId: currentRoom.userId,
+        adminRoomId: ADMIN_ROOM.id,
+        partyRoomId: PARTY_ROOM.id,
+        intent: intent as SteeringIntent,
+        direction,
+      },
+      events,
+    );
+    printLine(`  steering request submitted (intent=${intent})`);
+  } catch (err) {
+    if (err instanceof SteeringError) {
+      printLine(`  error: ${err.message}`);
+    } else {
+      throw err;
+    }
+  }
+}
+
 async function handleCanonize(events: EventBus, args: string[]): Promise<void> {
   const [oqId, decision, ...rest] = args;
   if (!oqId || !decision) {
@@ -208,6 +259,7 @@ function printHelp(): void {
       '    /say <text>                              emit dialogue as current user',
       '    /narrate <text>                          emit narration as narrator',
       '    /canonize <oq-id> promote|reject|..     decide an open question',
+      '    /steer <intent> <direction...>           (admin) issue steering for the party',
       '    /ls                                      list recent statements',
       '    help                                     show this',
       '    exit                                     quit',
@@ -228,9 +280,15 @@ async function main(): Promise<void> {
 
   workers.register(briefingGeneratorWorker);
   workers.register(openQuestionResolverWorker);
+  workers.register(steeringFormalizerWorker);
   await scheduler.schedule(
     { type: 'event', predicate: { kind: 'authoring-decision', scopeType: 'governance' } },
     'open-question-resolver',
+    {},
+  );
+  await scheduler.schedule(
+    { type: 'event', predicate: { kind: 'steering-request', scopeType: 'governance' } },
+    'steering-formalizer',
     {},
   );
 
@@ -328,6 +386,8 @@ async function main(): Promise<void> {
         await handleNarrate(events, rest.join(' '));
       } else if (cmd === '/canonize') {
         await handleCanonize(events, rest);
+      } else if (cmd === '/steer') {
+        await handleSteer(events, rest);
       } else if (cmd === '/ls') {
         await handleLs();
       } else if (cmd === 'help') {

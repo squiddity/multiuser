@@ -74,7 +74,7 @@ async function makeOpenQuestion(subject: string, candidate: string): Promise<str
   return id;
 }
 
-describe('integration: SteeringFormalizer agent', () => {
+describe('integration: DecisionFormalizer agent', () => {
   it('formalize() parses a promote response from mocked LLM', async () => {
     mockLlmGenerate.mockResolvedValueOnce({
       text: JSON.stringify({
@@ -83,8 +83,8 @@ describe('integration: SteeringFormalizer agent', () => {
       }),
     });
 
-    const { SteeringFormalizer } = await import('../../src/agents/steering-formalizer.js');
-    const formalizer = new SteeringFormalizer({ modelSpec: 'anthropic:claude-3-haiku-20240307' });
+    const { DecisionFormalizer } = await import('../../src/agents/decision-formalizer.js');
+    const formalizer = new DecisionFormalizer({ modelSpec: 'anthropic:claude-3-haiku-20240307' });
 
     const oqId = await makeOpenQuestion(
       'Dragon scar origin',
@@ -110,8 +110,8 @@ describe('integration: SteeringFormalizer agent', () => {
       }),
     });
 
-    const { SteeringFormalizer } = await import('../../src/agents/steering-formalizer.js');
-    const formalizer = new SteeringFormalizer({ modelSpec: 'anthropic:claude-3-haiku-20240307' });
+    const { DecisionFormalizer } = await import('../../src/agents/decision-formalizer.js');
+    const formalizer = new DecisionFormalizer({ modelSpec: 'anthropic:claude-3-haiku-20240307' });
 
     const oqId = await makeOpenQuestion('Dragon age', 'The dragon is only 50 years old.');
     const output = await formalizer.formalize(
@@ -135,8 +135,8 @@ describe('integration: SteeringFormalizer agent', () => {
       }),
     });
 
-    const { SteeringFormalizer } = await import('../../src/agents/steering-formalizer.js');
-    const formalizer = new SteeringFormalizer({ modelSpec: 'anthropic:claude-3-haiku-20240307' });
+    const { DecisionFormalizer } = await import('../../src/agents/decision-formalizer.js');
+    const formalizer = new DecisionFormalizer({ modelSpec: 'anthropic:claude-3-haiku-20240307' });
 
     const oqId = await makeOpenQuestion('Scar source', 'A wyvern caused the scar.');
     const output = await formalizer.formalize(
@@ -153,8 +153,8 @@ describe('integration: SteeringFormalizer agent', () => {
   });
 
   it('emit() writes an authoring-decision statement with correct fields', async () => {
-    const { SteeringFormalizer } = await import('../../src/agents/steering-formalizer.js');
-    const formalizer = new SteeringFormalizer({ modelSpec: 'anthropic:claude-3-haiku-20240307' });
+    const { DecisionFormalizer } = await import('../../src/agents/decision-formalizer.js');
+    const formalizer = new DecisionFormalizer({ modelSpec: 'anthropic:claude-3-haiku-20240307' });
 
     const oqId = await makeOpenQuestion('Rune origin', 'An ancient ward left by elves.');
     const output = {

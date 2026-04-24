@@ -183,7 +183,7 @@ The stage is a property of the question, updated by a lightweight worker watchin
 When the authoring room is itself in-fiction (per the wizard-cabal example in `rooms-and-roles.md`), the agent may render a governance inquiry in narrative voice appropriate to that room — portents, omens, a petitioner's plea, a vision delivered — while the underlying structured question (subject, candidate, blocks, priority) remains attached as statement fields.
 
 - The mechanical record is canonical; the narrative rendering is a view for in-room presentation.
-- Resolution may arrive in-character (the cabal decrees; a god answers) and is parsed back into a structured decision by the steering-formalizer worker.
+- Resolution may arrive in-character (the cabal decrees; a god answers) and is parsed back into a structured decision by the decision-formalizer agent (historically referred to as the steering-formalizer worker before milestone 0002 separated open-question decisions from steering).
 - For meta authoring rooms (pure-GM, pantheon as authors), rendering is plain; the two paths share one data model.
 
 This is where the wizard cabal receiving a vision from the agent and the pure-meta GM receiving a bullet-point inquiry are the same escalation with different rendering rules.

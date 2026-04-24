@@ -6,27 +6,27 @@ import type { Scope } from '../core/statement.js';
 import type { LlmRuntime } from '../core/llm-runtime.js';
 import type { StatementStore } from '../core/statement-store.js';
 
-export type SteeringDecision = 'promote' | 'reject' | 'supersede';
+export type DecisionOutcome = 'promote' | 'reject' | 'supersede';
 
-export interface SteeringFormalizerOutput {
-  decision: SteeringDecision;
+export interface DecisionFormalizerOutput {
+  decision: DecisionOutcome;
   rationale: string;
   revisedCandidate?: string;
 }
 
-export interface SteeringFormalizerConfig {
+export interface DecisionFormalizerConfig {
   modelSpec: string;
   campaignId?: string | null;
   llmRuntime?: LlmRuntime;
   statementStore?: StatementStore;
 }
 
-export class SteeringFormalizer {
-  private readonly config: SteeringFormalizerConfig;
+export class DecisionFormalizer {
+  private readonly config: DecisionFormalizerConfig;
   private readonly llmRuntime: LlmRuntime;
   private readonly statementStore: StatementStore;
 
-  constructor(config: SteeringFormalizerConfig) {
+  constructor(config: DecisionFormalizerConfig) {
     this.config = config;
     this.llmRuntime = config.llmRuntime ?? createPiAiLlmRuntime();
     this.statementStore = config.statementStore ?? createStatementStore();
@@ -37,8 +37,8 @@ export class SteeringFormalizer {
     subject: string,
     candidate: string,
     freeformText: string,
-  ): Promise<SteeringFormalizerOutput> {
-    const prompt = await loadAgentPrompt('steering-formalizer', this.config.campaignId ?? null);
+  ): Promise<DecisionFormalizerOutput> {
+    const prompt = await loadAgentPrompt('decision-formalizer', this.config.campaignId ?? null);
     try {
       const result = await this.llmRuntime.generate({
         modelSpec: this.config.modelSpec,
@@ -48,7 +48,7 @@ export class SteeringFormalizer {
 
       return this.parseOutput(result.text, openQuestionId);
     } catch (err) {
-      logger.error({ err, openQuestionId }, 'steering-formalizer: formalize failed');
+      logger.error({ err, openQuestionId }, 'decision-formalizer: formalize failed');
       return {
         decision: 'reject',
         rationale: 'LLM call failed; defaulting to reject for safety.',
@@ -59,7 +59,7 @@ export class SteeringFormalizer {
   async emit(
     scope: Scope,
     openQuestionId: string,
-    output: SteeringFormalizerOutput,
+    output: DecisionFormalizerOutput,
     authorId: string,
     sources?: string[],
   ): Promise<string> {
@@ -79,7 +79,7 @@ export class SteeringFormalizer {
       },
     });
 
-    logger.info({ id, openQuestionId, decision: output.decision }, 'steering-formalizer: emitted');
+    logger.info({ id, openQuestionId, decision: output.decision }, 'decision-formalizer: emitted');
     return id;
   }
 
@@ -93,7 +93,7 @@ export class SteeringFormalizer {
     );
   }
 
-  private parseOutput(text: string, openQuestionId: string): SteeringFormalizerOutput {
+  private parseOutput(text: string, openQuestionId: string): DecisionFormalizerOutput {
     try {
       const jsonMatch = text.match(/\{[\s\S]*\}/);
       if (!jsonMatch) throw new Error('no JSON found');
@@ -107,8 +107,8 @@ export class SteeringFormalizer {
         throw new Error('missing rationale');
       }
 
-      const output: SteeringFormalizerOutput = {
-        decision: parsed.decision as SteeringDecision,
+      const output: DecisionFormalizerOutput = {
+        decision: parsed.decision as DecisionOutcome,
         rationale: parsed.rationale,
       };
 
@@ -123,7 +123,7 @@ export class SteeringFormalizer {
     } catch (err) {
       logger.warn(
         { err, openQuestionId, text: text.substring(0, 200) },
-        'steering-formalizer: failed to parse output, defaulting to reject',
+        'decision-formalizer: failed to parse output, defaulting to reject',
       );
       return {
         decision: 'reject',
@@ -133,6 +133,6 @@ export class SteeringFormalizer {
   }
 }
 
-export function createSteeringFormalizer(config: SteeringFormalizerConfig): SteeringFormalizer {
-  return new SteeringFormalizer(config);
+export function createDecisionFormalizer(config: DecisionFormalizerConfig): DecisionFormalizer {
+  return new DecisionFormalizer(config);
 }
