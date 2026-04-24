@@ -2,7 +2,7 @@
 
 ## Status (2026-04-24)
 
-**Active — PR4 landed.**
+**Closed — PR5 landed.**
 
 Delivery progress per `docs/milestones/0002-pr-plan.md`:
 
@@ -10,7 +10,7 @@ Delivery progress per `docs/milestones/0002-pr-plan.md`:
 - **PR2** (briefing generation path) — closed. `briefing-generator` worker triggers on party activity, emits `kind=briefing` in governance scope with source linkage and strict per-trigger idempotency; integration tests and `briefing-only` demo scenario cover the path.
 - **PR3** (steering formalization + narrator application) — closed. `steering-formalizer` worker consumes `steering-request` events and emits structured `kind=steering` statements with `status=active`; `Narrator.buildContext` pulls active steering (newest-first per D56) and includes it in the user prompt and `LOG_LLM_INPUT` logs. `/steer` CLI verb and `POST /api/rooms/:roomId/steering` are the admin input surfaces. The milestone 0001 agent previously named `SteeringFormalizer` is now `DecisionFormalizer` (`author_id=decision-formalizer`) to free the worker name.
 - **PR4** (demo scenarios + scorecard JSON) — closed. The CLI demo driver emits milestone 0002 scorecard JSON for briefing and steering scenarios, including `briefing_emitted`, `briefing_scope_valid`, `steering_emitted`, `steering_applied_in_prompt`, and `post_steering_behavior_alignment`. Demo assessment classifies detected provider/runtime failures as `infra-flake`; prompt-inclusion and behavior-alignment evidence is attached when available.
-- **PR5** (documentation and runbook closure) — pending. Include demo-run methodology for selecting/configuring model providers and replace fixed live-response waits with polling-based response detection.
+- **PR5** (documentation and runbook closure) — closed. `docs/cli-harness-driving.md` and `docs/building.md` now document milestone 0002 scenarios and provider setup methodology; the CLI demo driver now uses polling-based response detection (`DEMO_POLL_TIMEOUT_MS`, `DEMO_POLL_INTERVAL_MS`) instead of fixed live-response waits.
 
 ## Goal
 
@@ -115,17 +115,17 @@ Add demonstration and test paths proving that:
 
 - [x] Add machine-readable demo report output (JSON).
 - [x] Classify infra/provider failures separately as `infra-flake`.
-- [ ] Document qualitative rubric examples for alignment judgments.
+- [x] Document qualitative rubric examples for alignment judgments.
 
 ### 5) Documentation updates
 
-- [ ] Update `docs/cli-harness-driving.md` with briefing/steering scenarios and flags.
-- [ ] Update `docs/building.md` with exact commands for milestone 0002 demos.
-- [ ] Update `docs/decisions.md` for any new policy decisions (for example steering precedence rules).
+- [x] Update `docs/cli-harness-driving.md` with briefing/steering scenarios and flags.
+- [x] Update `docs/building.md` with exact commands for milestone 0002 demos.
+- [x] Update `docs/decisions.md` for any new policy decisions (for example steering precedence rules).
 
 ### 6) Demo harness robustness follow-up
 
-- [ ] Replace fixed live-model wait timings with polling-based response detection so demos proceed when the expected statement appears rather than sleeping for a provider-specific timeout.
+- [x] Replace fixed live-model wait timings with polling-based response detection so demos proceed when the expected statement appears rather than sleeping for a provider-specific timeout.
 
 ## Out of scope
 

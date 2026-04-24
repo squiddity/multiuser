@@ -103,7 +103,11 @@ Demo methodology expectation: when an agent runs the demo, it should first verif
 - Model-provider failures (rate limit, insufficient credits, transient transport, empty provider responses) can cause missing or fallback narrator output even when state plumbing is correct.
 - Treat these as infrastructure/provider issues for demo reporting, not automatic context-handling failures.
 - For reproducible runs, keep `DEFAULT_MODEL_SPEC` stable and log LLM input (`DEMO_LOG_LLM_INPUT=1`).
-- The current demo driver uses a bounded live-response wait (`DEMO_LIVE_WAIT_MS`); local model runs may require a larger value until the driver is promoted to polling-based response detection.
+- The demo driver now uses polling-based response detection for async outcomes (narrator replies, steering emission, briefing emission, canon promotion) and advances as soon as the expected statement appears.
+- Polling knobs:
+  - `DEMO_POLL_TIMEOUT_MS` — max wait per checkpoint (default: 20s hosted, 45s local)
+  - `DEMO_POLL_INTERVAL_MS` — poll cadence (default: 500ms)
+  - `DEMO_LIVE_WAIT_MS` — fallback sleep only when polling is unavailable
 
 Run the incremental 0002 briefing checkpoint scenario:
 
@@ -127,6 +131,12 @@ To disable LLM input logging during demo:
 
 ```bash
 DEMO_LOG_LLM_INPUT=0 pnpm demo:cli
+```
+
+To increase polling timeout for slower local models:
+
+```bash
+DEMO_POLL_TIMEOUT_MS=90000 pnpm demo:cli
 ```
 
 ## Anti-pattern to avoid

@@ -90,6 +90,19 @@ Milestone 0002 demo scorecards use these check names:
 
 A scenario-specific run may mark checks that it does not exercise as `not-run`. Provider, transport, timeout, quota, and runtime failures should be classified as `infra-flake` rather than `fail` when behavior cannot be evaluated.
 
+## Qualitative rubric examples (`post_steering_behavior_alignment`)
+
+Use these examples when deciding between `pass`, `review`, and `infra-flake`:
+
+- **pass**
+  - Steering request: "Make the scene tense and ominous; no slapstick."
+  - Narrator response includes threat/pressure cues (for example, dread, shadows, silence, looming risk) and avoids jokey framing.
+- **review**
+  - Response is coherent but mixed: partially tense language with neutral or ambiguous tone, or lacks enough signal to confidently confirm alignment.
+  - Requires human judgment rather than automatic fail.
+- **infra-flake**
+  - No post-steering narrator response due to provider/runtime failure (timeout, rate limit, transport error), or fallback text indicates generation failure.
+
 ## Notes
 
 - Keep scorecards append-only for auditability.

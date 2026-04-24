@@ -15,10 +15,15 @@ const hasLiveResponder = Boolean(process.env.DEFAULT_MODEL_SPEC?.trim());
 const showDbNotices = process.env.DEMO_SHOW_DB_NOTICES === '1';
 const logLlmInput = process.env.DEMO_LOG_LLM_INPUT !== '0';
 const demoScenario = (process.env.DEMO_SCENARIO?.trim() || 'vertical-slice').toLowerCase();
-const liveWaitMs = Number(
+const fallbackWaitMs = Number(
   process.env.DEMO_LIVE_WAIT_MS ??
     (process.env.DEFAULT_MODEL_SPEC?.startsWith('local:') ? '30000' : '12000'),
 );
+const pollTimeoutMs = Number(
+  process.env.DEMO_POLL_TIMEOUT_MS ??
+    (process.env.DEFAULT_MODEL_SPEC?.startsWith('local:') ? '45000' : '20000'),
+);
+const pollIntervalMs = Number(process.env.DEMO_POLL_INTERVAL_MS ?? '500');
 
 const SUPPORTED_SCENARIOS = new Set(['vertical-slice', 'briefing-only', 'steering-application']);
 const MILESTONE_0002_CHECKS = [
@@ -61,73 +66,227 @@ function createSql(databaseUrl) {
   });
 }
 
-function buildSteps(scenario) {
-  let t = 0;
-  const steps = [];
-  const add = (delayMs, input) => {
-    t += delayMs;
-    steps.push({ delayMs: t, input });
-  };
+const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
-  if (scenario === 'vertical-slice') {
-    add(1500, 'help');
-    add(1000, '/ls');
-    add(1000, '/narrate The tavern lanterns flicker as a cold draft sweeps in.');
-    add(1500, '/ls');
-    add(1500, 'room admin-1');
-    add(1200, '/ls');
-    add(1400, `/canonize ${DEMO_OPEN_QUESTION_ID} promote`);
-    add(2500, '/ls');
+function writeCommand(child, input) {
+  process.stdout.write(`\n>>> ${input}\n`);
+  child.stdin.write(`${input}\n`);
+}
 
-    if (hasLiveResponder) {
-      add(1500, 'room party-1');
-      add(1200, `/say ${RECALL_QUESTION}`);
-      add(liveWaitMs, '/ls');
+async function countStatements(sql, whereSql) {
+  const rows = await whereSql();
+  return Number(rows[0]?.count ?? 0);
+}
+
+async function waitForCount({
+  label,
+  getCount,
+  targetCount,
+  timeoutMs = pollTimeoutMs,
+  intervalMs = pollIntervalMs,
+}) {
+  const started = Date.now();
+  while (Date.now() - started < timeoutMs) {
+    const count = await getCount();
+    if (count >= targetCount) {
+      process.stdout.write(
+        `[demo-driver] poll satisfied: ${label} count=${count} target=${targetCount}\n`,
+      );
+      return true;
     }
+    await sleep(intervalMs);
+  }
+  const finalCount = await getCount();
+  process.stdout.write(
+    `[demo-driver] poll timeout: ${label} count=${finalCount} target=${targetCount} timeoutMs=${timeoutMs}\n`,
+  );
+  return false;
+}
 
-    add(1500, 'exit');
-    return steps;
+function createPollQueries(sql) {
+  if (!sql) return null;
+
+  return {
+    narratorCount: () =>
+      countStatements(
+        sql,
+        () => sql`
+        select count(*)::int as count
+        from statements
+        where scope_type = 'party'
+          and scope_key = ${PARTY_ROOM_ID}
+          and author_type = 'agent'
+          and author_id = 'narrator'
+      `,
+      ),
+    briefingCount: () =>
+      countStatements(
+        sql,
+        () => sql`
+        select count(*)::int as count
+        from statements
+        where scope_type = 'governance'
+          and scope_key = ${ADMIN_ROOM_ID}
+          and kind = 'briefing'
+      `,
+      ),
+    steeringCount: () =>
+      countStatements(
+        sql,
+        () => sql`
+        select count(*)::int as count
+        from statements
+        where scope_type = 'governance'
+          and scope_key = ${ADMIN_ROOM_ID}
+          and kind = 'steering'
+      `,
+      ),
+    worldCanonCount: () =>
+      countStatements(
+        sql,
+        () => sql`
+        select count(*)::int as count
+        from statements
+        where scope_type = 'world'
+          and scope_key is null
+          and kind = 'canon-reference'
+          and author_id = 'decision-formalizer'
+      `,
+      ),
+  };
+}
+
+async function maybePoll({ label, getCount, targetCount }) {
+  if (!getCount) {
+    process.stdout.write(
+      `[demo-driver] polling unavailable for ${label}; sleeping fallback ${fallbackWaitMs}ms\n`,
+    );
+    await sleep(fallbackWaitMs);
+    return false;
+  }
+  return waitForCount({ label, getCount, targetCount });
+}
+
+async function runVerticalSliceScenario(child, pollQueries) {
+  writeCommand(child, 'help');
+  await sleep(1000);
+  writeCommand(child, '/ls');
+  await sleep(900);
+  writeCommand(child, '/narrate The tavern lanterns flicker as a cold draft sweeps in.');
+  await sleep(1400);
+  writeCommand(child, '/ls');
+  await sleep(1200);
+  writeCommand(child, 'room admin-1');
+  await sleep(1000);
+  writeCommand(child, '/ls');
+
+  const canonBaseline = pollQueries ? await pollQueries.worldCanonCount() : 0;
+  await sleep(1000);
+  writeCommand(child, `/canonize ${DEMO_OPEN_QUESTION_ID} promote`);
+  await maybePoll({
+    label: 'world canon promotions',
+    getCount: pollQueries?.worldCanonCount,
+    targetCount: canonBaseline + 1,
+  });
+  writeCommand(child, '/ls');
+
+  if (hasLiveResponder) {
+    const narratorBaseline = pollQueries ? await pollQueries.narratorCount() : 0;
+    await sleep(1000);
+    writeCommand(child, 'room party-1');
+    await sleep(900);
+    writeCommand(child, `/say ${RECALL_QUESTION}`);
+    await maybePoll({
+      label: 'party narrator responses (recall)',
+      getCount: pollQueries?.narratorCount,
+      targetCount: narratorBaseline + 1,
+    });
+    writeCommand(child, '/ls');
   }
 
-  if (scenario === 'briefing-only') {
-    add(1500, 'help');
-    add(1000, '/ls');
-    add(1000, "/say We found silver marks hidden under the ferryman's toll board.");
-    // Add wait time after each /say for async briefing-generator to process
-    add(3500, '/say Mara spotted a gate sigil matching the old marsh maps.');
-    add(3500, '/ls');
-    add(1500, 'room admin-1');
-    add(1500, '/ls');
-    // Wait for any pending briefing workers to complete
-    add(3000, '/ls');
-    add(1200, 'exit');
-    return steps;
+  await sleep(1000);
+  writeCommand(child, 'exit');
+}
+
+async function runBriefingOnlyScenario(child, pollQueries) {
+  writeCommand(child, 'help');
+  await sleep(1000);
+  writeCommand(child, '/ls');
+
+  const briefingBaseline = pollQueries ? await pollQueries.briefingCount() : 0;
+
+  await sleep(900);
+  writeCommand(child, "/say We found silver marks hidden under the ferryman's toll board.");
+  await sleep(900);
+  writeCommand(child, '/say Mara spotted a gate sigil matching the old marsh maps.');
+
+  await maybePoll({
+    label: 'admin briefings',
+    getCount: pollQueries?.briefingCount,
+    targetCount: briefingBaseline + 1,
+  });
+
+  writeCommand(child, '/ls');
+  await sleep(1000);
+  writeCommand(child, 'room admin-1');
+  await sleep(1000);
+  writeCommand(child, '/ls');
+  await sleep(900);
+  writeCommand(child, '/ls');
+  await sleep(900);
+  writeCommand(child, 'exit');
+}
+
+async function runSteeringApplicationScenario(child, pollQueries) {
+  writeCommand(child, 'help');
+  await sleep(1000);
+  writeCommand(child, '/ls');
+
+  const narratorBaseline = pollQueries ? await pollQueries.narratorCount() : 0;
+  const steeringBaseline = pollQueries ? await pollQueries.steeringCount() : 0;
+
+  await sleep(900);
+  writeCommand(child, '/say We approach the north gate in the dim dusk.');
+  if (hasLiveResponder) {
+    await maybePoll({
+      label: 'party narrator responses (pre-steering)',
+      getCount: pollQueries?.narratorCount,
+      targetCount: narratorBaseline + 1,
+    });
+  } else {
+    await sleep(900);
   }
 
-  if (scenario === 'steering-application') {
-    add(1500, 'help');
-    add(1000, '/ls');
-    // Baseline narration turn before any steering
-    add(1000, '/say We approach the north gate in the dim dusk.');
-    // Wait for narrator (if live) to respond
-    add(hasLiveResponder ? liveWaitMs : 1500, '/ls');
+  writeCommand(child, '/ls');
+  await sleep(1200);
 
-    // Switch to admin and issue steering
-    add(1500, 'room admin-1');
-    add(1000, '/steer tone Make the scene tense and ominous; no slapstick.');
-    // Let steering-formalizer worker fire
-    add(2500, '/ls');
+  writeCommand(child, 'room admin-1');
+  await sleep(900);
+  writeCommand(child, '/steer tone Make the scene tense and ominous; no slapstick.');
+  await maybePoll({
+    label: 'admin steering statements',
+    getCount: pollQueries?.steeringCount,
+    targetCount: steeringBaseline + 1,
+  });
+  writeCommand(child, '/ls');
 
-    // Back to party and trigger another narration turn
-    add(1500, 'room party-1');
-    add(1000, '/say We step closer to the gate.');
-    add(hasLiveResponder ? liveWaitMs : 1500, '/ls');
-
-    add(1200, 'exit');
-    return steps;
+  await sleep(1200);
+  writeCommand(child, 'room party-1');
+  await sleep(900);
+  writeCommand(child, '/say We step closer to the gate.');
+  if (hasLiveResponder) {
+    await maybePoll({
+      label: 'party narrator responses (post-steering)',
+      getCount: pollQueries?.narratorCount,
+      targetCount: narratorBaseline + 2,
+    });
+  } else {
+    await sleep(900);
   }
 
-  throw new Error(`unsupported DEMO_SCENARIO: ${scenario}`);
+  writeCommand(child, '/ls');
+  await sleep(900);
+  writeCommand(child, 'exit');
 }
 
 async function resetDemoScopes() {
@@ -568,10 +727,8 @@ async function main() {
   }
 
   process.stdout.write(
-    `[demo-driver] options: DEMO_SCENARIO=${demoScenario} DEMO_SHOW_DB_NOTICES=${showDbNotices ? '1' : '0'} DEMO_LOG_LLM_INPUT=${logLlmInput ? '1' : '0'} DEMO_LIVE_WAIT_MS=${liveWaitMs}\n`,
+    `[demo-driver] options: DEMO_SCENARIO=${demoScenario} DEMO_SHOW_DB_NOTICES=${showDbNotices ? '1' : '0'} DEMO_LOG_LLM_INPUT=${logLlmInput ? '1' : '0'} DEMO_POLL_TIMEOUT_MS=${pollTimeoutMs} DEMO_POLL_INTERVAL_MS=${pollIntervalMs} DEMO_LIVE_WAIT_MS=${fallbackWaitMs}\n`,
   );
-
-  const steps = buildSteps(demoScenario);
 
   const childEnv = {
     ...process.env,
@@ -585,6 +742,9 @@ async function main() {
     stdio: ['pipe', 'pipe', 'pipe'],
   });
 
+  const pollSql = process.env.DATABASE_URL ? createSql(process.env.DATABASE_URL) : null;
+  const pollQueries = createPollQueries(pollSql);
+
   let childOutput = '';
   child.stdout.on('data', (chunk) => {
     const text = chunk.toString();
@@ -597,37 +757,64 @@ async function main() {
     process.stderr.write(chunk);
   });
 
-  for (const step of steps) {
-    setTimeout(() => {
-      process.stdout.write(`\n>>> ${step.input}\n`);
-      child.stdin.write(`${step.input}\n`);
-    }, step.delayMs);
-  }
-
-  const lastStepDelayMs = steps[steps.length - 1]?.delayMs ?? 0;
-  const forceExitTimer = setTimeout(() => {
-    process.stderr.write('\n[demo-driver] timeout waiting for process exit; sending SIGTERM\n');
-    child.kill('SIGTERM');
-  }, lastStepDelayMs + 30000);
-
-  child.on('exit', async (code, signal) => {
-    clearTimeout(forceExitTimer);
-    process.stdout.write(`\n[demo-driver] child exited code=${code} signal=${signal}\n`);
-    await assessDemoResults({
-      scenario: demoScenario,
-      startedAt,
-      finishedAt: new Date().toISOString(),
-      childExitCode: code,
-      childExitSignal: signal,
-      childOutput,
-    });
-    process.exit(code ?? (signal ? 1 : 0));
-  });
-
   process.on('SIGINT', () => {
     process.stderr.write('\n[demo-driver] received SIGINT; forwarding to child\n');
     child.kill('SIGINT');
   });
+
+  const forceExitTimer = setTimeout(
+    () => {
+      process.stderr.write('\n[demo-driver] timeout waiting for process exit; sending SIGTERM\n');
+      child.kill('SIGTERM');
+    },
+    Math.max(120000, pollTimeoutMs * 8),
+  );
+
+  const exitPayload = await new Promise((resolve) => {
+    child.on('exit', (code, signal) => resolve({ code, signal }));
+
+    (async () => {
+      try {
+        await sleep(1500);
+        if (demoScenario === 'vertical-slice') {
+          await runVerticalSliceScenario(child, pollQueries);
+        } else if (demoScenario === 'briefing-only') {
+          await runBriefingOnlyScenario(child, pollQueries);
+        } else if (demoScenario === 'steering-application') {
+          await runSteeringApplicationScenario(child, pollQueries);
+        }
+      } catch (err) {
+        const detail =
+          err instanceof Error
+            ? err.stack || err.message
+            : typeof err === 'string'
+              ? err
+              : inspect(err);
+        process.stderr.write(`[demo-driver] scenario runner error: ${detail}\n`);
+        child.kill('SIGTERM');
+      }
+    })();
+  });
+
+  clearTimeout(forceExitTimer);
+  process.stdout.write(
+    `\n[demo-driver] child exited code=${exitPayload.code} signal=${exitPayload.signal}\n`,
+  );
+
+  await assessDemoResults({
+    scenario: demoScenario,
+    startedAt,
+    finishedAt: new Date().toISOString(),
+    childExitCode: exitPayload.code,
+    childExitSignal: exitPayload.signal,
+    childOutput,
+  });
+
+  if (pollSql) {
+    await pollSql.end({ timeout: 5 });
+  }
+
+  process.exit(exitPayload.code ?? (exitPayload.signal ? 1 : 0));
 }
 
 main().catch((err) => {

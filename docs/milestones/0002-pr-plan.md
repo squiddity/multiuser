@@ -122,7 +122,7 @@ have been updated accordingly.
 - Demo run emits machine-readable scorecard JSON matching schema draft. ✅
 - Scorecard reflects scenario outcomes and provider failure handling. ✅
 
-## PR5 — Documentation and runbook closure
+## PR5 — Documentation and runbook closure ✅ Completed (2026-04-24)
 
 ### Scope
 
@@ -131,7 +131,19 @@ have been updated accordingly.
 - Replace fixed live-model waits in the demo driver with polling-based response detection so scenarios advance when expected statements appear.
 - Capture any new policy refinements in `docs/decisions.md`.
 
+### Delivered
+
+- `scripts/drive-cli-demo.mjs` now uses polling-based async checkpoint detection for narrator replies, briefing emission, steering emission, and canon promotion; fixed live-response sleeps were removed from scenario flow control.
+- Added poll configuration knobs:
+  - `DEMO_POLL_TIMEOUT_MS`
+  - `DEMO_POLL_INTERVAL_MS`
+  - `DEMO_LIVE_WAIT_MS` remains as fallback when polling is unavailable.
+- Updated `docs/cli-harness-driving.md` with milestone 0002 scenarios, model-provider methodology, and polling controls.
+- Updated `docs/building.md` with exact milestone 0002 demo commands and local/OpenAI-compatible provider guidance.
+- Added qualitative rubric examples for `post_steering_behavior_alignment` to `docs/evals/scorecard-schema.md`.
+- Recorded demo polling strategy policy in `docs/decisions.md` (D61).
+
 ### Exit checks
 
-- A new contributor can execute milestone 0002 demos/tests from docs alone.
-- All milestone 0002 contracts and policies are discoverable in docs.
+- A new contributor can execute milestone 0002 demos/tests from docs alone. ✅
+- All milestone 0002 contracts and policies are discoverable in docs. ✅

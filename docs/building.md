@@ -94,6 +94,15 @@ pnpm demo:cli
 
 This uses a child-process driver that keeps stdin open and sends commands incrementally, resets prior statements in the demo scopes before running so the first `/ls` is clean, seeds an open question so `/canonize` is exercised, then asks a follow-up `/say` recall question in the player room to demonstrate model interaction with persisted canon.
 
+Milestone 0002 scenarios:
+
+```bash
+DEMO_SCENARIO=briefing-only pnpm demo:cli
+DEMO_SCENARIO=steering-application pnpm demo:cli
+```
+
+The driver uses polling-based checkpoints (instead of fixed sleeps) to wait for expected async statements such as `briefing`, `steering`, and narrator responses.
+
 To skip reset and keep prior demo data:
 
 ```bash
@@ -103,8 +112,10 @@ DEMO_CLI_RESET=0 pnpm demo:cli
 Useful demo toggles:
 
 ```bash
-DEMO_SHOW_DB_NOTICES=1 pnpm demo:cli   # show Postgres NOTICE logs
-DEMO_LOG_LLM_INPUT=0 pnpm demo:cli     # hide narrator prompt payload logs
+DEMO_SHOW_DB_NOTICES=1 pnpm demo:cli      # show Postgres NOTICE logs
+DEMO_LOG_LLM_INPUT=0 pnpm demo:cli        # hide narrator prompt payload logs
+DEMO_POLL_TIMEOUT_MS=90000 pnpm demo:cli  # allow slower model/provider responses
+DEMO_POLL_INTERVAL_MS=250 pnpm demo:cli   # faster polling cadence
 ```
 
 Do not drive the harness by piping a finite input stream into `pnpm dev`; that can close readline early and raise `ERR_USE_AFTER_CLOSE`.

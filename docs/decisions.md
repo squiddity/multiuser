@@ -475,6 +475,13 @@ Format:
 - **R** — This removes duplicated loop logic from app code, aligns tool semantics with the runtime's event model, and keeps worker/resolver code behind a stable local interface.
 - **S** — complete (v1 codepaths).
 
+### D61. Demo harness async checkpoint strategy
+
+- **Q** — should CLI demo scenarios wait with fixed sleeps or detect async outcomes dynamically?
+- **D** — Use polling-based statement detection with bounded timeout (`DEMO_POLL_TIMEOUT_MS`) and interval (`DEMO_POLL_INTERVAL_MS`) so scenarios advance when expected statements arrive.
+- **R** — Fixed waits were provider-dependent and brittle. Polling improves reliability across hosted and local models while still allowing deterministic timeout classification (`infra-flake`/`review`) when outcomes do not appear.
+- **S** — complete (v1 demo harness).
+
 ---
 
 ## Remaining open items

@@ -15,8 +15,8 @@ Provide a single roadmap index for milestone status, sequencing, and handoff con
 2. **0002 — Admin/Player Context, Briefing, and Steering Workflows**
    - File: `docs/milestones/0002-stateful-llm-evals-and-extraction.md`
    - Delivery plan: `docs/milestones/0002-pr-plan.md`
-   - Status: **Active** — PR1, PR2, PR3, and PR4 landed; PR5 (docs + runbook closure) remaining.
-   - Focus: complete briefing and steering loops so governance guidance reliably shapes player-facing narration.
+   - Status: **Closed** — PR1 through PR5 landed.
+   - Focus: completed briefing and steering loops so governance guidance reliably shapes player-facing narration.
 
 3. **0003 — Discord Integration and UX Validation**
    - File: `docs/milestones/0003-discord-integration-validation.md`
