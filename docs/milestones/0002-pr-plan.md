@@ -126,8 +126,9 @@ have been updated accordingly.
 
 ### Scope
 
-- Update `docs/cli-harness-driving.md` for new scenarios and toggles.
-- Update `docs/building.md` with exact milestone 0002 commands.
+- Update `docs/cli-harness-driving.md` for new scenarios and toggles, including model-provider setup expectations for demos.
+- Update `docs/building.md` with exact milestone 0002 commands and local/OpenAI-compatible provider examples.
+- Replace fixed live-model waits in the demo driver with polling-based response detection so scenarios advance when expected statements appear.
 - Capture any new policy refinements in `docs/decisions.md`.
 
 ### Exit checks

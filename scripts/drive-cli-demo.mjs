@@ -15,6 +15,10 @@ const hasLiveResponder = Boolean(process.env.DEFAULT_MODEL_SPEC?.trim());
 const showDbNotices = process.env.DEMO_SHOW_DB_NOTICES === '1';
 const logLlmInput = process.env.DEMO_LOG_LLM_INPUT !== '0';
 const demoScenario = (process.env.DEMO_SCENARIO?.trim() || 'vertical-slice').toLowerCase();
+const liveWaitMs = Number(
+  process.env.DEMO_LIVE_WAIT_MS ??
+    (process.env.DEFAULT_MODEL_SPEC?.startsWith('local:') ? '30000' : '12000'),
+);
 
 const SUPPORTED_SCENARIOS = new Set(['vertical-slice', 'briefing-only', 'steering-application']);
 const MILESTONE_0002_CHECKS = [
@@ -78,7 +82,7 @@ function buildSteps(scenario) {
     if (hasLiveResponder) {
       add(1500, 'room party-1');
       add(1200, `/say ${RECALL_QUESTION}`);
-      add(12000, '/ls');
+      add(liveWaitMs, '/ls');
     }
 
     add(1500, 'exit');
@@ -106,7 +110,7 @@ function buildSteps(scenario) {
     // Baseline narration turn before any steering
     add(1000, '/say We approach the north gate in the dim dusk.');
     // Wait for narrator (if live) to respond
-    add(hasLiveResponder ? 10000 : 1500, '/ls');
+    add(hasLiveResponder ? liveWaitMs : 1500, '/ls');
 
     // Switch to admin and issue steering
     add(1500, 'room admin-1');
@@ -117,7 +121,7 @@ function buildSteps(scenario) {
     // Back to party and trigger another narration turn
     add(1500, 'room party-1');
     add(1000, '/say We step closer to the gate.');
-    add(hasLiveResponder ? 12000 : 1500, '/ls');
+    add(hasLiveResponder ? liveWaitMs : 1500, '/ls');
 
     add(1200, 'exit');
     return steps;
@@ -564,7 +568,7 @@ async function main() {
   }
 
   process.stdout.write(
-    `[demo-driver] options: DEMO_SCENARIO=${demoScenario} DEMO_SHOW_DB_NOTICES=${showDbNotices ? '1' : '0'} DEMO_LOG_LLM_INPUT=${logLlmInput ? '1' : '0'}\n`,
+    `[demo-driver] options: DEMO_SCENARIO=${demoScenario} DEMO_SHOW_DB_NOTICES=${showDbNotices ? '1' : '0'} DEMO_LOG_LLM_INPUT=${logLlmInput ? '1' : '0'} DEMO_LIVE_WAIT_MS=${liveWaitMs}\n`,
   );
 
   const steps = buildSteps(demoScenario);
@@ -600,10 +604,11 @@ async function main() {
     }, step.delayMs);
   }
 
+  const lastStepDelayMs = steps[steps.length - 1]?.delayMs ?? 0;
   const forceExitTimer = setTimeout(() => {
     process.stderr.write('\n[demo-driver] timeout waiting for process exit; sending SIGTERM\n');
     child.kill('SIGTERM');
-  }, 70000);
+  }, lastStepDelayMs + 30000);
 
   child.on('exit', async (code, signal) => {
     clearTimeout(forceExitTimer);

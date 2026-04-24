@@ -40,6 +40,8 @@ DEFAULT_MODEL_SPEC=local:llama3.1:8b
 
 Any OpenAI-compatible local server can be used by changing the base URL and model id. If you prefer a different provider prefix, set `LOCAL_MODEL_PROVIDER=ollama` and use `DEFAULT_MODEL_SPEC=ollama:<model-id>`.
 
+For demo/test methodology, confirm the configured provider is available before judging narrative behavior. If a hosted provider returns empty text, times out, or is quota-limited, switch `DEFAULT_MODEL_SPEC` to a known local provider and rerun the demo; classify provider/runtime failures separately from application behavior.
+
 ## Docker (recommended)
 
 ```bash
