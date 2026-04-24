@@ -1,5 +1,17 @@
 # Milestone 0002 — Admin/Player Context, Briefing, and Steering Workflows
 
+## Status (2026-04-24)
+
+**Active — PR3 landed.**
+
+Delivery progress per `docs/milestones/0002-pr-plan.md`:
+
+- **PR1** (contracts and policy baseline) — closed. Briefing and steering contracts, steering status/intent enums, `selectActiveSteering` precedence utility, and decision D56 recorded in `docs/decisions.md`.
+- **PR2** (briefing generation path) — closed. `briefing-generator` worker triggers on party activity, emits `kind=briefing` in governance scope with source linkage and strict per-trigger idempotency; integration tests and `briefing-only` demo scenario cover the path.
+- **PR3** (steering formalization + narrator application) — closed. `steering-formalizer` worker consumes `steering-request` events and emits structured `kind=steering` statements with `status=active`; `Narrator.buildContext` pulls active steering (newest-first per D56) and includes it in the user prompt and `LOG_LLM_INPUT` logs. `/steer` CLI verb and `POST /api/rooms/:roomId/steering` are the admin input surfaces. The milestone 0001 agent previously named `SteeringFormalizer` is now `DecisionFormalizer` (`author_id=decision-formalizer`) to free the worker name.
+- **PR4** (demo scenarios + scorecard JSON) — next. PR3 added lightweight `steering_emitted` / `steering_applied_in_prompt` checkpoint evidence; PR4 consolidates the full milestone scorecard (adding `briefing_emitted`, `briefing_scope_valid`, `post_steering_behavior_alignment`) and introduces the `infra-flake` classification across scenarios.
+- **PR5** (documentation and runbook closure) — pending.
+
 ## Goal
 
 Round out cross-room context handling between party and admin roles by fully implementing briefing and steering workflows.
@@ -79,7 +91,7 @@ Add demonstration and test paths proving that:
 - [x] Implement/finish briefing worker trigger strategy.
 - [x] Emit admin-facing briefing statements with source linkage.
 - [x] Add dedupe/idempotency guardrails for repeated trigger windows.
-- [ ] Add integration tests asserting scope correctness and source coverage.
+- [x] Add integration tests asserting scope correctness and source coverage.
 
 ### 2) Steering formalization and application path
 
