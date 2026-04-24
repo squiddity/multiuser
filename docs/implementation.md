@@ -143,6 +143,7 @@ src/
       actions.ts          # describeActions — reads instruction metadata
   agents/               # role-focused agent implementations
     narrator.ts
+    decision-formalizer.ts   # formalizes GM open-question decisions (authoring-decision)
     world-author.ts
     style-extractor.ts
     consistency-auditor.ts

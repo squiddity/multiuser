@@ -22,7 +22,7 @@ Deferred from this milestone into later roadmap work:
 - **Scopes used**: `party:party-1` (read: world ∪ party ∪ character), `governance:admin-1` + `meta:admin-1`.
 - **Roles**: `player` in party-1, `gm` in admin-1 (`canonize`).
 - **Verbs**: `/say`, admin-only `/canonize <open-q-id> <decision>`.
-- **Agents**: `narrator` (party), `steering-formalizer` (admin decision formalization path).
+- **Agents**: `narrator` (party), `decision-formalizer` (admin open-question decision path; historically named `steering-formalizer` during 0001 — renamed in milestone 0002 PR3 when the name was claimed by the steering workflow).
 - **Workers**: `live-responder`, `open-question-resolver`.
 - **Resolver**: `AgentBackedResolver` framework present; gameplay mechanics usage is deferred.
 - **Harness**: CLI REPL with room switching and scripted demo driving.

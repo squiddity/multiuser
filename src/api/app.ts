@@ -9,6 +9,7 @@ import { getStatement, listByScope, scopeParts, deleteStatement } from '../store
 import { appendIndexAndEmit } from '../store/emit.js';
 import { NewStatement } from '../core/statement.js';
 import { canonizeOpenQuestion, CanonizeError } from '../store/canonize.js';
+import { emitSteeringRequest, SteeringError } from '../store/steering.js';
 import type { EventBus } from '../core/events.js';
 
 const CanonizeRequest = withValidation(
@@ -22,6 +23,26 @@ const CanonizeRequest = withValidation(
     ]),
     rationale: Type.Optional(Type.String()),
     revisedCandidate: Type.Optional(Type.String()),
+  }),
+);
+
+const SteerRequest = withValidation(
+  Type.Object({
+    userId: Type.String({ minLength: 1 }),
+    partyRoomId: Type.String({ format: 'uuid' }),
+    intent: Type.Union([
+      Type.Literal('tone'),
+      Type.Literal('constraint'),
+      Type.Literal('direction'),
+      Type.Literal('pacing'),
+      Type.Literal('spotlight'),
+      Type.Literal('safety'),
+      Type.Literal('other'),
+    ]),
+    direction: Type.String({ minLength: 1 }),
+    tone: Type.Optional(Type.String({ minLength: 1 })),
+    constraints: Type.Optional(Type.Array(Type.String({ minLength: 1 }))),
+    content: Type.Optional(Type.String({ minLength: 1 })),
   }),
 );
 
@@ -111,6 +132,27 @@ export function createApp(events: EventBus): Hono {
       limit,
       offset,
     });
+  });
+
+  app.post('/api/rooms/:roomId/steering', async (c) => {
+    const roomId = c.req.param('roomId');
+    const body = await c.req.json();
+    const parsed = SteerRequest.safeParse(body);
+    if (!parsed.success) {
+      return c.json({ error: 'invalid request', details: parsed.error.message }, 400);
+    }
+    try {
+      const id = await emitSteeringRequest({ ...parsed.data, adminRoomId: roomId }, events);
+      const statement = await getStatement(id);
+      if (!statement) return c.json({ error: 'failed to retrieve after creation' }, 500);
+      return c.json(toStatementResponse(statement), 201);
+    } catch (err) {
+      if (err instanceof SteeringError) {
+        if (err.code === 'forbidden') return c.json({ error: err.message }, 403);
+        return c.json({ error: err.message }, 400);
+      }
+      throw err;
+    }
   });
 
   app.post('/api/rooms/:roomId/canonize', async (c) => {

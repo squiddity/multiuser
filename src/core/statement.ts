@@ -14,6 +14,7 @@ const StatementKindSchema = Type.Union([
   Type.Literal('canon-reference'),
   Type.Literal('briefing'),
   Type.Literal('steering'),
+  Type.Literal('steering-request'),
   Type.Literal('open-question'),
   Type.Literal('authoring-decision'),
   Type.Literal('safety-invocation'),

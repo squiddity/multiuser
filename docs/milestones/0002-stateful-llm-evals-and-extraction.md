@@ -83,15 +83,15 @@ Add demonstration and test paths proving that:
 
 ### 2) Steering formalization and application path
 
-- [ ] Implement/finish admin steering formalization into structured statements.
-- [ ] Define active-steering selection logic for narrator prompt assembly.
-- [ ] Include active steering snippets in logged prompt context when enabled.
-- [ ] Add integration tests proving narrator context changes after steering updates.
+- [x] Implement/finish admin steering formalization into structured statements.
+- [x] Define active-steering selection logic for narrator prompt assembly.
+- [x] Include active steering snippets in logged prompt context when enabled.
+- [x] Add integration tests proving narrator context changes after steering updates.
 
 ### 3) End-to-end demo flows
 
-- [ ] Extend CLI demo script with a briefing-focused scenario.
-- [ ] Extend CLI demo script with a steering-change scenario showing before/after behavior.
+- [x] Extend CLI demo script with a briefing-focused scenario.
+- [x] Extend CLI demo script with a steering-change scenario showing before/after behavior.
 - [ ] Add end-of-run scorecard for:
   - `briefing_emitted`
   - `briefing_scope_valid`

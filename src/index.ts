@@ -11,6 +11,7 @@ import { EventBus } from './core/events.js';
 import { createApp, getPort } from './api/app.js';
 import { liveResponderWorker } from './workers/live-responder.js';
 import { openQuestionResolverWorker } from './workers/open-question-resolver.js';
+import { steeringFormalizerWorker } from './workers/steering-formalizer.js';
 import { serve } from '@hono/node-server';
 
 const ADMIN_ROOM_ID = '22222222-2222-2222-2222-222222222222';
@@ -60,6 +61,14 @@ async function main(): Promise<void> {
     {},
   );
   logger.info('open-question-resolver registered');
+
+  workers.register(steeringFormalizerWorker);
+  await scheduler.schedule(
+    { type: 'event', predicate: { kind: 'steering-request', scopeType: 'governance' } },
+    'steering-formalizer',
+    {},
+  );
+  logger.info('steering-formalizer registered');
 
   await scheduler.start();
 

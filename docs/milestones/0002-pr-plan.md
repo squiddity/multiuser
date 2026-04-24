@@ -44,7 +44,7 @@ This keeps demo evidence aligned with implementation progress and avoids waiting
 - A party activity fixture causes exactly one briefing emission in expected governance scope.
 - Replaying the same trigger window does not emit duplicates.
 
-## PR3 — Steering formalization + narrator application (admin → runtime)
+## PR3 — Steering formalization + narrator application (admin → runtime) ✅ Completed (2026-04-24)
 
 ### Scope
 
@@ -55,10 +55,43 @@ This keeps demo evidence aligned with implementation progress and avoids waiting
 - Add integration tests proving post-steering prompt/context changes.
 - Extend demo checkpointing with steering before/after evidence (lightweight in PR3; full JSON scorecard in PR4).
 
+### Delivered
+
+- New `steering-request` statement kind and `SteeringRequestContract` as the
+  admin input surface. Admin submits via `/steer <intent> <direction...>` (CLI)
+  or `POST /api/rooms/:roomId/steering` (HTTP). Capability check requires the
+  `canonize` grant on the admin room.
+- `steering-formalizer` worker (`src/workers/steering-formalizer.ts`) consumes
+  `steering-request` events and emits a structured `kind=steering` statement
+  in governance scope with `status=active` and source linkage to the request.
+- `listActiveSteeringFor(partyRoomId, adminRoomId)` uses `selectActiveSteering`
+  to order newest-first and filter out superseded/revoked entries, matching
+  decision D56.
+- `Narrator.buildContext` fetches active steering for the current party room
+  and renders an "Active GM steering" block in the user prompt; `LOG_LLM_INPUT`
+  now includes a compact `activeSteering` summary so steering evidence is
+  auditable in logs.
+- Integration tests in `test/integration/steering-flow.test.ts` cover
+  capability gating, worker emission, newest-first ordering, prompt inclusion
+  when steering is active, and prompt omission when none is active.
+- Demo driver gains a `steering-application` scenario with a pre-steering
+  narration turn, an admin `/steer`, and a post-steering narration turn; the
+  scorecard emits `steering_emitted` and `steering_applied_in_prompt` checks
+  (lightweight; the full milestone scorecard consolidates in PR4).
+
+### Naming note
+
+The milestone 0001 agent previously named `SteeringFormalizer`
+(authoring-decision formalizer) has been renamed to `DecisionFormalizer` and
+its `author_id` is now `decision-formalizer`. This frees the
+`steering-formalizer` name for the new worker that emits actual `kind=steering`
+statements. The demo reset query and docs that referenced the old `author_id`
+have been updated accordingly.
+
 ### Exit checks
 
-- Steering statements are emitted and persisted with valid contract fields.
-- Narrator prompt assembly includes active steering after updates.
+- Steering statements are emitted and persisted with valid contract fields. ✅
+- Narrator prompt assembly includes active steering after updates. ✅
 
 ## PR4 — Demo scenarios + scorecard JSON
 

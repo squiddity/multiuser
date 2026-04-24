@@ -81,6 +81,29 @@ const SteeringStatementContractSchema = Type.Object({
 export const SteeringStatementContract = withValidation(SteeringStatementContractSchema);
 export type SteeringStatementContract = Static<typeof SteeringStatementContractSchema>;
 
+const SteeringRequestFieldsSchema = Type.Object({
+  appliesToPartyRoomId: Type.String({ format: 'uuid' }),
+  issuedByUserId: Type.String({ minLength: 1 }),
+  intent: SteeringIntentSchema,
+  tone: Type.Optional(Type.String({ minLength: 1 })),
+  constraints: Type.Optional(Type.Array(Type.String({ minLength: 1 }), { default: [] })),
+  direction: Type.String({ minLength: 1 }),
+});
+export const SteeringRequestFields = withValidation(SteeringRequestFieldsSchema);
+export type SteeringRequestFields = Static<typeof SteeringRequestFieldsSchema>;
+
+const SteeringRequestContractSchema = Type.Object({
+  kind: Type.Literal('steering-request'),
+  scope: Type.Object({
+    type: Type.Literal('governance'),
+    roomId: Type.String({ format: 'uuid' }),
+  }),
+  content: Type.String({ minLength: 1 }),
+  fields: SteeringRequestFieldsSchema,
+});
+export const SteeringRequestContract = withValidation(SteeringRequestContractSchema);
+export type SteeringRequestContract = Static<typeof SteeringRequestContractSchema>;
+
 export interface SteeringCandidate {
   id: string;
   createdAt: Date | string;
