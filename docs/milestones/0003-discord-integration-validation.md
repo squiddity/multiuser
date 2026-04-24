@@ -1,5 +1,9 @@
 # Milestone 0003 — Discord Integration and UX Validation
 
+## Status (2026-04-24)
+
+**Active — kickoff after milestone 0002 closure.**
+
 ## Goal
 
 Plug the proven runtime behaviors from prior milestones into the Discord adapter and verify they work reliably in real chat interaction surfaces.

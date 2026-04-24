@@ -20,7 +20,7 @@ Provide a single roadmap index for milestone status, sequencing, and handoff con
 
 3. **0003 — Discord Integration and UX Validation**
    - File: `docs/milestones/0003-discord-integration-validation.md`
-   - Status: **Planned**
+   - Status: **Active**
    - Focus: verify milestones 0001–0002 behavior in real Discord chat interaction surfaces.
 
 4. **0004 — RPG Mechanics and Command Surface**
