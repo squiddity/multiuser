@@ -113,7 +113,7 @@ export const briefingGeneratorWorker: Worker<BriefingGeneratorPayload> = {
         prompt: summaryPrompt,
       });
 
-      briefingContent = result.text.trim();
+      briefingContent = result.text.trim() || makeBriefingContent(partyInputs);
     } catch (err) {
       ctx.logger.error({ err, partyRoomId }, 'briefing-generator: LLM call failed');
       briefingContent = makeBriefingContent(partyInputs);

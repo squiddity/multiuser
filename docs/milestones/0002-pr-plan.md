@@ -93,7 +93,7 @@ have been updated accordingly.
 - Steering statements are emitted and persisted with valid contract fields. ✅
 - Narrator prompt assembly includes active steering after updates. ✅
 
-## PR4 — Demo scenarios + scorecard JSON
+## PR4 — Demo scenarios + scorecard JSON ✅ Completed (2026-04-24)
 
 ### Scope
 
@@ -108,10 +108,19 @@ have been updated accordingly.
   - `post_steering_behavior_alignment`
 - Classify infra/provider failures as `infra-flake`.
 
+### Delivered
+
+- `scripts/drive-cli-demo.mjs` now emits the milestone 0002 scorecard check set for both `briefing-only` and `steering-application` scenarios.
+- Briefing assessment validates governance/admin scope, party/admin room binding fields, and source linkage.
+- Steering assessment validates structured active steering emission, confirms prompt inclusion from `LOG_LLM_INPUT` output when enabled, and records post-steering narrator output for behavior-alignment review.
+- Demo output is buffered for scorecard assessment so provider/runtime failure evidence can be classified as `infra-flake` where behavior cannot be evaluated.
+- `docs/evals/scorecard-schema.md` now documents the milestone 0002 check names and `[demo-scorecard]` JSON line contract.
+- Briefing generation falls back to deterministic content when the provider returns empty text, keeping `kind=briefing` contract validation stable during demos.
+
 ### Exit checks
 
-- Demo run emits machine-readable scorecard JSON matching schema draft.
-- Scorecard reflects scenario outcomes and provider failure handling.
+- Demo run emits machine-readable scorecard JSON matching schema draft. ✅
+- Scorecard reflects scenario outcomes and provider failure handling. ✅
 
 ## PR5 — Documentation and runbook closure
 

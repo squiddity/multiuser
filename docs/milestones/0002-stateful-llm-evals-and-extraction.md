@@ -2,14 +2,14 @@
 
 ## Status (2026-04-24)
 
-**Active — PR3 landed.**
+**Active — PR4 landed.**
 
 Delivery progress per `docs/milestones/0002-pr-plan.md`:
 
 - **PR1** (contracts and policy baseline) — closed. Briefing and steering contracts, steering status/intent enums, `selectActiveSteering` precedence utility, and decision D56 recorded in `docs/decisions.md`.
 - **PR2** (briefing generation path) — closed. `briefing-generator` worker triggers on party activity, emits `kind=briefing` in governance scope with source linkage and strict per-trigger idempotency; integration tests and `briefing-only` demo scenario cover the path.
 - **PR3** (steering formalization + narrator application) — closed. `steering-formalizer` worker consumes `steering-request` events and emits structured `kind=steering` statements with `status=active`; `Narrator.buildContext` pulls active steering (newest-first per D56) and includes it in the user prompt and `LOG_LLM_INPUT` logs. `/steer` CLI verb and `POST /api/rooms/:roomId/steering` are the admin input surfaces. The milestone 0001 agent previously named `SteeringFormalizer` is now `DecisionFormalizer` (`author_id=decision-formalizer`) to free the worker name.
-- **PR4** (demo scenarios + scorecard JSON) — next. PR3 added lightweight `steering_emitted` / `steering_applied_in_prompt` checkpoint evidence; PR4 consolidates the full milestone scorecard (adding `briefing_emitted`, `briefing_scope_valid`, `post_steering_behavior_alignment`) and introduces the `infra-flake` classification across scenarios.
+- **PR4** (demo scenarios + scorecard JSON) — closed. The CLI demo driver emits milestone 0002 scorecard JSON for briefing and steering scenarios, including `briefing_emitted`, `briefing_scope_valid`, `steering_emitted`, `steering_applied_in_prompt`, and `post_steering_behavior_alignment`. Demo assessment classifies detected provider/runtime failures as `infra-flake`; prompt-inclusion and behavior-alignment evidence is attached when available.
 - **PR5** (documentation and runbook closure) — pending.
 
 ## Goal
@@ -104,7 +104,7 @@ Add demonstration and test paths proving that:
 
 - [x] Extend CLI demo script with a briefing-focused scenario.
 - [x] Extend CLI demo script with a steering-change scenario showing before/after behavior.
-- [ ] Add end-of-run scorecard for:
+- [x] Add end-of-run scorecard for:
   - `briefing_emitted`
   - `briefing_scope_valid`
   - `steering_emitted`
@@ -113,8 +113,8 @@ Add demonstration and test paths proving that:
 
 ### 4) Evaluation/reporting
 
-- [ ] Add machine-readable demo report output (JSON).
-- [ ] Classify infra/provider failures separately as `infra-flake`.
+- [x] Add machine-readable demo report output (JSON).
+- [x] Classify infra/provider failures separately as `infra-flake`.
 - [ ] Document qualitative rubric examples for alignment judgments.
 
 ### 5) Documentation updates

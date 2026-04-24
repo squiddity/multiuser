@@ -1,10 +1,10 @@
-# Demo Scorecard Schema (Stub)
+# Demo Scorecard Schema
 
 ## Purpose
 
 Define a stable, machine-readable shape for demo and evaluation summaries.
 
-This is an initial stub for milestone 0002 work. It captures the minimum shared contract so scripts, tests, and future CI aggregation can converge on one format.
+This is the milestone 0002 demo reporting contract used by the CLI demo driver. It captures the shared JSON shape so scripts, tests, and future CI aggregation can consume demo outcomes without scraping human-readable logs.
 
 ## Status values
 
@@ -14,7 +14,7 @@ This is an initial stub for milestone 0002 work. It captures the minimum shared 
 - `infra-flake` — run failed due to provider/transport/runtime infrastructure issues (not a model-policy failure).
 - `not-run` — check not executed in this scenario.
 
-## Top-level shape (draft)
+## Top-level shape
 
 ```json
 {
@@ -55,7 +55,7 @@ This is an initial stub for milestone 0002 work. It captures the minimum shared 
 }
 ```
 
-## Required fields (initial)
+## Required fields
 
 - `schemaVersion`
 - `runId`
@@ -67,7 +67,7 @@ This is an initial stub for milestone 0002 work. It captures the minimum shared 
 - `overall`
 - `checks`
 
-## Check entry contract (initial)
+## Check entry contract
 
 Each `checks.<checkName>` entry should include:
 
@@ -78,8 +78,20 @@ Optional:
 
 - `evidence` (statement IDs, scope keys, prompt snippets, etc.)
 
+## Milestone 0002 checks
+
+Milestone 0002 demo scorecards use these check names:
+
+- `briefing_emitted` — a briefing statement exists and includes source linkage.
+- `briefing_scope_valid` — the briefing is written to governance/admin scope and binds the expected party/admin room IDs.
+- `steering_emitted` — a structured active steering statement exists with source linkage.
+- `steering_applied_in_prompt` — logged narrator input includes active steering context when prompt logging is enabled.
+- `post_steering_behavior_alignment` — the post-steering narrator output reflects the requested direction. This can be `review` when qualitative judgment is required.
+
+A scenario-specific run may mark checks that it does not exercise as `not-run`. Provider, transport, timeout, quota, and runtime failures should be classified as `infra-flake` rather than `fail` when behavior cannot be evaluated.
+
 ## Notes
 
 - Keep scorecards append-only for auditability.
 - If a run has both behavior concerns and provider failures, separate them across individual check statuses where possible.
-- This schema will be tightened once milestone 0002 demo scripts emit JSON by default.
+- The CLI demo driver emits the machine-readable JSON as a single line prefixed with `[demo-scorecard]`.
