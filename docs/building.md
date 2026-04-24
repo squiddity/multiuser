@@ -23,8 +23,22 @@ pnpm install
 
 ```bash
 cp .env.example .env
-# Edit .env — at minimum set a model provider key (OPENROUTER_API_KEY, ANTHROPIC_API_KEY, or OPENAI_API_KEY)
+# Edit .env — set either a hosted provider key (OPENROUTER_API_KEY, ANTHROPIC_API_KEY, or OPENAI_API_KEY)
+# or configure LOCAL_MODEL_BASE_URL for an OpenAI-compatible local model server.
 ```
+
+### Local/OpenAI-compatible model provider
+
+The app routes live narrator and briefing model calls through `DEFAULT_MODEL_SPEC` using the `"<provider>:<model-id>"` format. Built-in providers are resolved by pi-ai. For local inference servers, set `LOCAL_MODEL_BASE_URL` and use the configured local provider name, which defaults to `local`:
+
+```bash
+LOCAL_MODEL_PROVIDER=local
+LOCAL_MODEL_BASE_URL=http://localhost:11434/v1
+LOCAL_MODEL_API_KEY=dummy
+DEFAULT_MODEL_SPEC=local:llama3.1:8b
+```
+
+Any OpenAI-compatible local server can be used by changing the base URL and model id. If you prefer a different provider prefix, set `LOCAL_MODEL_PROVIDER=ollama` and use `DEFAULT_MODEL_SPEC=ollama:<model-id>`.
 
 ## Docker (recommended)
 

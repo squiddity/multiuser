@@ -1,8 +1,9 @@
 import { Agent, type AgentTool } from '@mariozechner/pi-agent-core';
-import type { AssistantMessage } from '@mariozechner/pi-ai';
+import type { AssistantMessage, Model } from '@mariozechner/pi-ai';
 import { getModel } from '@mariozechner/pi-ai';
 import { Type } from 'typebox';
 import type { LlmRuntime, LlmRuntimeRequest, LlmRuntimeResponse } from '../core/llm-runtime.js';
+import { env } from '../config/env.js';
 
 function parseModelSpec(spec: string): { provider: string; modelId: string } {
   const idx = spec.indexOf(':');
@@ -15,6 +16,43 @@ function parseModelSpec(spec: string): { provider: string; modelId: string } {
     throw new Error(`model spec missing slug: "${spec}"`);
   }
   return { provider, modelId };
+}
+
+function resolveModel(spec: string): Model<any> {
+  const { provider, modelId } = parseModelSpec(spec);
+  const localProvider = env.LOCAL_MODEL_PROVIDER || 'local';
+
+  if (env.LOCAL_MODEL_BASE_URL && provider === localProvider) {
+    return {
+      id: modelId,
+      name: `${modelId} (${provider})`,
+      api: 'openai-completions',
+      provider,
+      baseUrl: env.LOCAL_MODEL_BASE_URL,
+      reasoning: env.LOCAL_MODEL_REASONING,
+      input: ['text'],
+      cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 },
+      contextWindow: env.LOCAL_MODEL_CONTEXT_WINDOW,
+      maxTokens: env.LOCAL_MODEL_MAX_TOKENS,
+      compat: {
+        supportsStore: false,
+        supportsDeveloperRole: false,
+        supportsReasoningEffort: env.LOCAL_MODEL_REASONING,
+        supportsUsageInStreaming: false,
+        maxTokensField: 'max_tokens',
+      },
+    } satisfies Model<'openai-completions'>;
+  }
+
+  return getModel(provider as never, modelId as never);
+}
+
+function resolveApiKey(provider: string): string | undefined {
+  const localProvider = env.LOCAL_MODEL_PROVIDER || 'local';
+  if (env.LOCAL_MODEL_BASE_URL && provider === localProvider) {
+    return env.LOCAL_MODEL_API_KEY || 'dummy';
+  }
+  return undefined;
 }
 
 function assistantText(message: AssistantMessage): string {
@@ -61,8 +99,8 @@ function toAgentTools(request: LlmRuntimeRequest): AgentTool[] {
 
 export class PiAiLlmRuntime implements LlmRuntime {
   async generate(request: LlmRuntimeRequest): Promise<LlmRuntimeResponse> {
-    const { provider, modelId } = parseModelSpec(request.modelSpec);
-    const model = getModel(provider as never, modelId as never);
+    const { provider } = parseModelSpec(request.modelSpec);
+    const model = resolveModel(request.modelSpec);
 
     const agent = new Agent({
       initialState: {
@@ -70,6 +108,7 @@ export class PiAiLlmRuntime implements LlmRuntime {
         systemPrompt: request.systemPrompt,
         tools: toAgentTools(request),
       },
+      getApiKey: () => resolveApiKey(provider),
     });
 
     await agent.prompt(request.prompt);

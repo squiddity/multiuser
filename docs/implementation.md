@@ -22,7 +22,7 @@ Fix the concrete stack, component topology, and code layout for v1. Everything a
 
 - **Per-agent model selection** uses provider-prefixed specs (`"<provider>:<slug>"`) passed through the local `LlmRuntime` boundary to the pi runtime adapter (`src/models/pi-runtime.ts`).
 - **Agent definitions own their model choice.** No logical aliases ("cheap"/"premium"); each agent/role declares the spec appropriate for its job. A scheduled consistency reviewer that needs a large context window for daily digests and a chat-path narrator are separate declarations — they may sit on different providers and different slugs independently.
-- **Provider credentials** are loaded by pi model resolution for the referenced provider; missing keys fail at call time.
+- **Provider credentials** are loaded by pi model resolution for the referenced provider; missing keys fail at call time. Local/OpenAI-compatible inference servers are configured with `LOCAL_MODEL_BASE_URL` and selected via `DEFAULT_MODEL_SPEC=<local-provider>:<model-id>`.
 - **Embeddings**: OpenAI `text-embedding-3-small` (1536 dim) initially; swap when cost/privacy pressure warrants.
 
 ## How pi SDK components fit

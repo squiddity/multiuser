@@ -29,6 +29,14 @@ const EnvSchema = withValidation(
     OPENROUTER_API_KEY: Type.Optional(Type.String()),
     ANTHROPIC_API_KEY: Type.Optional(Type.String()),
     OPENAI_API_KEY: Type.Optional(Type.String()),
+    LOCAL_MODEL_PROVIDER: Type.Optional(Type.String({ default: 'local' })),
+    LOCAL_MODEL_BASE_URL: Type.Optional(Type.String()),
+    LOCAL_MODEL_API_KEY: Type.Optional(Type.String()),
+    LOCAL_MODEL_CONTEXT_WINDOW: Type.Optional(Type.Integer({ minimum: 1, default: 131072 })),
+    LOCAL_MODEL_MAX_TOKENS: Type.Optional(Type.Integer({ minimum: 1, default: 8192 })),
+    LOCAL_MODEL_REASONING: Type.Optional(
+      Type.Union([Type.Literal('0'), Type.Literal('1')], { default: '0' }),
+    ),
     EMBED_MODEL: Type.Optional(Type.String({ default: 'text-embedding-3-small' })),
     EMBED_DIM: Type.Optional(Type.Integer({ minimum: 1, default: 1536 })),
     LONG_CONTENT_WARN_CHARS: Type.Optional(Type.Integer({ minimum: 1, default: 6000 })),
@@ -53,6 +61,12 @@ export type Env = {
   OPENROUTER_API_KEY?: string;
   ANTHROPIC_API_KEY?: string;
   OPENAI_API_KEY?: string;
+  LOCAL_MODEL_PROVIDER: string;
+  LOCAL_MODEL_BASE_URL?: string;
+  LOCAL_MODEL_API_KEY?: string;
+  LOCAL_MODEL_CONTEXT_WINDOW: number;
+  LOCAL_MODEL_MAX_TOKENS: number;
+  LOCAL_MODEL_REASONING: boolean;
   EMBED_MODEL: string;
   EMBED_DIM: number;
   LONG_CONTENT_WARN_CHARS: number;
@@ -66,6 +80,12 @@ const parsed = EnvSchema.parse({
   ...process.env,
   API_PORT: process.env.API_PORT ? Number(process.env.API_PORT) : undefined,
   EMBED_DIM: process.env.EMBED_DIM ? Number(process.env.EMBED_DIM) : undefined,
+  LOCAL_MODEL_CONTEXT_WINDOW: process.env.LOCAL_MODEL_CONTEXT_WINDOW
+    ? Number(process.env.LOCAL_MODEL_CONTEXT_WINDOW)
+    : undefined,
+  LOCAL_MODEL_MAX_TOKENS: process.env.LOCAL_MODEL_MAX_TOKENS
+    ? Number(process.env.LOCAL_MODEL_MAX_TOKENS)
+    : undefined,
   LONG_CONTENT_WARN_CHARS: process.env.LONG_CONTENT_WARN_CHARS
     ? Number(process.env.LONG_CONTENT_WARN_CHARS)
     : undefined,
@@ -79,6 +99,12 @@ export const env: Env = {
   OPENROUTER_API_KEY: parsed.OPENROUTER_API_KEY,
   ANTHROPIC_API_KEY: parsed.ANTHROPIC_API_KEY,
   OPENAI_API_KEY: parsed.OPENAI_API_KEY,
+  LOCAL_MODEL_PROVIDER: parsed.LOCAL_MODEL_PROVIDER ?? 'local',
+  LOCAL_MODEL_BASE_URL: parsed.LOCAL_MODEL_BASE_URL,
+  LOCAL_MODEL_API_KEY: parsed.LOCAL_MODEL_API_KEY,
+  LOCAL_MODEL_CONTEXT_WINDOW: parsed.LOCAL_MODEL_CONTEXT_WINDOW ?? 131072,
+  LOCAL_MODEL_MAX_TOKENS: parsed.LOCAL_MODEL_MAX_TOKENS ?? 8192,
+  LOCAL_MODEL_REASONING: parsed.LOCAL_MODEL_REASONING === '1',
   EMBED_MODEL: parsed.EMBED_MODEL ?? 'text-embedding-3-small',
   EMBED_DIM: parsed.EMBED_DIM ?? 1536,
   LONG_CONTENT_WARN_CHARS: parsed.LONG_CONTENT_WARN_CHARS ?? 6000,
