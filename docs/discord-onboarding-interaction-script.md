@@ -89,11 +89,11 @@ Type-level contract draft lives in `docs/discord-onboarding-schema-draft.md`.
 - `Saved.` or `Skipped.`
 - `Progress: 2/4`
 
-### S4 — Character field 3: Archetype/playstyle (select)
+### S4 — Character field 3: Profile field (agent/rules-defined)
 
 **Ephemeral prompt:**
 
-- `Pick your starting archetype/playstyle.`
+- `Pick your next profile field value (from rules/onboarding config).`
 
 **Select options (v1 baseline):**
 
@@ -105,7 +105,7 @@ Type-level contract draft lives in `docs/discord-onboarding-schema-draft.md`.
 
 **Success response:**
 
-- `Archetype saved: **<choice>**`
+- `Profile value saved: **<choice>**`
 - `Progress: 3/4`
 
 ### S5 — Character field 4: Backstory hook (modal)
@@ -141,7 +141,7 @@ Type-level contract draft lives in `docs/discord-onboarding-schema-draft.md`.
 **Components:**
 
 - `Confirm character` (success)
-- `Edit field` (secondary select: name/pronouns/archetype/hook)
+- `Edit field` (secondary select: name/pronouns/profile/hook)
 - `Cancel onboarding` (danger)
 
 ### S7 — Routing decision + placement
@@ -260,14 +260,14 @@ Use opaque custom IDs mapped server-side. The backend resolves each ID to an int
 - `onboard.name.submit`
 - `onboard.pronouns.open`
 - `onboard.pronouns.submit`
-- `onboard.archetype.select`
+- `onboard.profile.select`
 - `onboard.hook.open`
 - `onboard.hook.submit`
 - `onboard.review.open`
 - `onboard.confirm`
 - `onboard.edit.name`
 - `onboard.edit.pronouns`
-- `onboard.edit.archetype`
+- `onboard.edit.profile`
 - `onboard.edit.hook`
 - `onboard.private-thread.open`
 
@@ -275,10 +275,10 @@ Use opaque custom IDs mapped server-side. The backend resolves each ID to an int
 
 - `name`
 - `pronouns`
-- `archetype`
+- `profile`
 - `hook`
 
-### Archetype enum (v1)
+### Example profile field values (demo only)
 
 - `frontline`
 - `scout`
@@ -291,7 +291,7 @@ Use opaque custom IDs mapped server-side. The backend resolves each ID to an int
 - `name`: string, trimmed, length `2..40`
 - `pronouns`: string, trimmed, length `0..60` (optional)
 - `hook`: string, trimmed, length `10..280`
-- `archetype`: must be one of archetype enum values
+- `profile`: key/value entries validated against active onboarding configuration
 
 ### Escalation threshold constant
 
@@ -320,9 +320,9 @@ Use opaque custom IDs mapped server-side. The backend resolves each ID to an int
     - `Skip` → `onboard.continue` (Secondary)
   - Modal submit action: `onboard.pronouns.submit`
 
-- **S4 archetype**
-  - Select custom id: `onboard.archetype.select`
-  - Allowed values: archetype enum only
+- **S4 profile field**
+  - Select custom id: `onboard.profile.select`
+  - Allowed values: profile field options from onboarding config only
 
 - **S5 hook**
   - Button: `Add hook` → `onboard.hook.open` (Primary)
@@ -334,7 +334,7 @@ Use opaque custom IDs mapped server-side. The backend resolves each ID to an int
   - Select/menu or buttons for edit:
     - `onboard.edit.name`
     - `onboard.edit.pronouns`
-    - `onboard.edit.archetype`
+    - `onboard.edit.profile`
     - `onboard.edit.hook`
   - Button: `Cancel onboarding` → `onboard.cancel` (Danger)
 

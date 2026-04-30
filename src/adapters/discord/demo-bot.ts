@@ -16,20 +16,20 @@ import {
   type StringSelectMenuInteraction,
 } from 'discord.js';
 import type { Logger } from 'pino';
-import {
-  normalizeOnboardingInput,
-  type Archetype,
-  type CharacterDraft,
-} from '../../core/onboarding.js';
+import { normalizeOnboardingInput, type CharacterDraft } from '../../core/onboarding.js';
 import { InMemoryOnboardingService, type OnboardingSession } from './onboarding-service.js';
 
-const ARCHETYPE_OPTIONS: Array<{ value: Archetype; label: string; description: string }> = [
-  { value: 'frontline', label: 'Frontline', description: 'Direct, bold approach' },
-  { value: 'scout', label: 'Scout', description: 'Stealth and mobility' },
-  { value: 'scholar', label: 'Scholar', description: 'Knowledge and analysis' },
-  { value: 'face', label: 'Face', description: 'Social influence and diplomacy' },
-  { value: 'wildcard', label: 'Wildcard', description: 'Unpredictable style' },
-];
+const DEMO_PROFILE_FIELD = {
+  key: 'archetype',
+  label: 'Archetype / playstyle',
+  options: [
+    { value: 'frontline', label: 'Frontline', description: 'Direct, bold approach' },
+    { value: 'scout', label: 'Scout', description: 'Stealth and mobility' },
+    { value: 'scholar', label: 'Scholar', description: 'Knowledge and analysis' },
+    { value: 'face', label: 'Face', description: 'Social influence and diplomacy' },
+    { value: 'wildcard', label: 'Wildcard', description: 'Unpredictable style' },
+  ],
+} as const;
 
 export interface DiscordDemoBotController {
   client: Client;
@@ -40,7 +40,7 @@ function progressText(session: OnboardingSession): string {
   let complete = 0;
   if (session.draft.name) complete += 1;
   if (typeof session.draft.pronouns !== 'undefined') complete += 1;
-  if (session.draft.archetype) complete += 1;
+  if (session.draft.profile?.[DEMO_PROFILE_FIELD.key]) complete += 1;
   if (session.draft.hook) complete += 1;
   return `Progress: ${complete}/4`;
 }
@@ -50,7 +50,7 @@ function renderSummary(session: OnboardingSession): string {
     '**Character Summary**',
     `- Name: ${session.draft.name ?? '_not set_'}`,
     `- Pronouns/display: ${session.draft.pronouns ?? 'not specified'}`,
-    `- Archetype: ${session.draft.archetype ?? '_not set_'}`,
+    `- ${DEMO_PROFILE_FIELD.label}: ${session.draft.profile?.[DEMO_PROFILE_FIELD.key] ?? '_not set_'}`,
     `- Hook: ${session.draft.hook ?? '_not set_'}`,
     progressText(session),
   ].join('\n');
@@ -101,14 +101,14 @@ function pronounsPromptComponents() {
   ];
 }
 
-function archetypePromptComponents() {
+function profilePromptComponents() {
   return [
     new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(
       new StringSelectMenuBuilder()
-        .setCustomId('onboard.archetype.select')
-        .setPlaceholder('Pick an archetype')
+        .setCustomId('onboard.profile.select')
+        .setPlaceholder(`Pick ${DEMO_PROFILE_FIELD.label.toLowerCase()}`)
         .addOptions(
-          ARCHETYPE_OPTIONS.map((option) => ({
+          DEMO_PROFILE_FIELD.options.map((option) => ({
             label: option.label,
             value: option.value,
             description: option.description,
@@ -143,6 +143,10 @@ function reviewComponents() {
       new ButtonBuilder()
         .setCustomId('onboard.edit.name')
         .setLabel('Edit name')
+        .setStyle(ButtonStyle.Secondary),
+      new ButtonBuilder()
+        .setCustomId('onboard.edit.profile')
+        .setLabel(`Edit ${DEMO_PROFILE_FIELD.label}`)
         .setStyle(ButtonStyle.Secondary),
       new ButtonBuilder()
         .setCustomId('onboard.edit.hook')
@@ -218,7 +222,7 @@ async function continueFlow({
     return;
   }
 
-  if (!session.draft.archetype) {
+  if (!session.draft.profile?.[DEMO_PROFILE_FIELD.key]) {
     if (typeof session.draft.pronouns === 'undefined') {
       await interaction.update({
         content: `Optional: share pronouns or display preference.\n${progressText(session)}`,
@@ -228,8 +232,8 @@ async function continueFlow({
     }
 
     await interaction.update({
-      content: `Pick your starting archetype/playstyle.\n${progressText(session)}`,
-      components: archetypePromptComponents(),
+      content: `Pick your starting ${DEMO_PROFILE_FIELD.label.toLowerCase()}.\n${progressText(session)}`,
+      components: profilePromptComponents(),
     });
     return;
   }
@@ -248,7 +252,9 @@ async function continueFlow({
 function ensureDraftComplete(
   session: OnboardingSession,
 ): session is OnboardingSession & { draft: CharacterDraft } {
-  return Boolean(session.draft.name && session.draft.archetype && session.draft.hook);
+  return Boolean(
+    session.draft.name && session.draft.profile?.[DEMO_PROFILE_FIELD.key] && session.draft.hook,
+  );
 }
 
 async function handleButton({
@@ -263,30 +269,25 @@ async function handleButton({
   const session = service.getOrCreateSession(interaction.user.id);
 
   switch (interaction.customId) {
-    case 'onboard.continue': {
+    case 'onboard.continue':
       await continueFlow({ interaction, session });
       return;
-    }
-    case 'onboard.cancel': {
+    case 'onboard.cancel':
       service.reset(interaction.user.id);
       await interaction.update({
         content: 'Onboarding canceled. Run /start-onboarding to begin again.',
         components: [],
       });
       return;
-    }
-    case 'onboard.name.open': {
+    case 'onboard.name.open':
       await showNameModal(interaction);
       return;
-    }
-    case 'onboard.pronouns.open': {
+    case 'onboard.pronouns.open':
       await showPronounsModal(interaction);
       return;
-    }
-    case 'onboard.hook.open': {
+    case 'onboard.hook.open':
       await showHookModal(interaction);
       return;
-    }
     case 'onboard.private-thread.open': {
       const channel = interaction.channel;
       if (!channel || channel.type !== ChannelType.GuildText || !('threads' in channel)) {
@@ -314,15 +315,19 @@ async function handleButton({
       });
       return;
     }
-    case 'onboard.edit.name': {
+    case 'onboard.edit.name':
       await showNameModal(interaction);
       return;
-    }
-    case 'onboard.edit.hook': {
+    case 'onboard.edit.profile':
+      await interaction.update({
+        content: `Pick your starting ${DEMO_PROFILE_FIELD.label.toLowerCase()}.\n${progressText(session)}`,
+        components: profilePromptComponents(),
+      });
+      return;
+    case 'onboard.edit.hook':
       await showHookModal(interaction);
       return;
-    }
-    case 'onboard.confirm': {
+    case 'onboard.confirm':
       if (!ensureDraftComplete(session)) {
         await interaction.update({
           content: 'Character is incomplete. Please finish all required fields first.',
@@ -341,10 +346,8 @@ async function handleButton({
         'demo onboarding completed',
       );
       return;
-    }
-    default: {
+    default:
       await interaction.reply({ content: 'Unknown action.', flags: MessageFlags.Ephemeral });
-    }
   }
 }
 
@@ -355,23 +358,27 @@ async function handleSelect({
   interaction: StringSelectMenuInteraction;
   service: InMemoryOnboardingService;
 }): Promise<void> {
-  if (interaction.customId !== 'onboard.archetype.select') {
+  if (interaction.customId !== 'onboard.profile.select') {
     return;
   }
 
   const selected = interaction.values[0];
-  const archetype = ARCHETYPE_OPTIONS.find((opt) => opt.value === selected)?.value;
-  if (!archetype) {
+  const profileValue = DEMO_PROFILE_FIELD.options.find((opt) => opt.value === selected)?.value;
+  if (!profileValue) {
     await interaction.update({
-      content: 'Invalid archetype.',
-      components: archetypePromptComponents(),
+      content: `Invalid ${DEMO_PROFILE_FIELD.label.toLowerCase()}.`,
+      components: profilePromptComponents(),
     });
     return;
   }
 
-  const session = service.setArchetype(interaction.user.id, archetype);
+  const session = service.setProfileValue(
+    interaction.user.id,
+    DEMO_PROFILE_FIELD.key,
+    profileValue,
+  );
   await interaction.update({
-    content: `Archetype saved: **${archetype}**\n${progressText(session)}`,
+    content: `${DEMO_PROFILE_FIELD.label} saved: **${profileValue}**\n${progressText(session)}`,
     components: hookPromptComponents(),
   });
 }
@@ -402,7 +409,7 @@ async function handleModal({
     await interaction.reply({
       flags: MessageFlags.Ephemeral,
       content: `Saved.\n${progressText(session)}`,
-      components: archetypePromptComponents(),
+      components: profilePromptComponents(),
     });
     return;
   }
@@ -415,7 +422,6 @@ async function handleModal({
       content: `Hook saved.\n${progressText(session)}`,
       components: reviewComponents(),
     });
-    return;
   }
 }
 

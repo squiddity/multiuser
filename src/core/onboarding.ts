@@ -11,14 +11,14 @@ const OnboardingActionKeySchema = Type.Union([
   Type.Literal('onboard.name.submit'),
   Type.Literal('onboard.pronouns.open'),
   Type.Literal('onboard.pronouns.submit'),
-  Type.Literal('onboard.archetype.select'),
+  Type.Literal('onboard.profile.select'),
   Type.Literal('onboard.hook.open'),
   Type.Literal('onboard.hook.submit'),
   Type.Literal('onboard.review.open'),
   Type.Literal('onboard.confirm'),
   Type.Literal('onboard.edit.name'),
   Type.Literal('onboard.edit.pronouns'),
-  Type.Literal('onboard.edit.archetype'),
+  Type.Literal('onboard.edit.profile'),
   Type.Literal('onboard.edit.hook'),
   Type.Literal('onboard.private-thread.open'),
 ]);
@@ -28,21 +28,11 @@ export type OnboardingActionKey = Static<typeof OnboardingActionKeySchema>;
 const OnboardingFieldKeySchema = Type.Union([
   Type.Literal('name'),
   Type.Literal('pronouns'),
-  Type.Literal('archetype'),
+  Type.Literal('profile'),
   Type.Literal('hook'),
 ]);
 export const OnboardingFieldKey = withValidation(OnboardingFieldKeySchema);
 export type OnboardingFieldKey = Static<typeof OnboardingFieldKeySchema>;
-
-const ArchetypeSchema = Type.Union([
-  Type.Literal('frontline'),
-  Type.Literal('scout'),
-  Type.Literal('scholar'),
-  Type.Literal('face'),
-  Type.Literal('wildcard'),
-]);
-export const Archetype = withValidation(ArchetypeSchema);
-export type Archetype = Static<typeof ArchetypeSchema>;
 
 const OnboardingStepSchema = Type.Union([
   Type.Literal('invited'),
@@ -68,7 +58,7 @@ export type RoutingDecisionSource = Static<typeof RoutingDecisionSourceSchema>;
 const CharacterDraftSchema = Type.Object({
   name: Type.String({ minLength: 2, maxLength: 40 }),
   pronouns: Type.Optional(Type.String({ minLength: 0, maxLength: 60 })),
-  archetype: ArchetypeSchema,
+  profile: Type.Record(NonEmptyString, NonEmptyString),
   hook: Type.String({ minLength: 10, maxLength: 280 }),
 });
 export const CharacterDraft = withValidation(CharacterDraftSchema);
@@ -90,7 +80,7 @@ export type OnboardingInteractionRecord = Static<typeof OnboardingInteractionRec
 const RetryCountsSchema = Type.Object({
   name: Type.Integer({ minimum: 0 }),
   pronouns: Type.Integer({ minimum: 0 }),
-  archetype: Type.Integer({ minimum: 0 }),
+  profile: Type.Integer({ minimum: 0 }),
   hook: Type.Integer({ minimum: 0 }),
 });
 

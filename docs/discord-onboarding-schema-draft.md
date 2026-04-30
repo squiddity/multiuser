@@ -25,14 +25,14 @@ export const OnboardingActionKey = T.Union([
   T.Literal('onboard.name.submit'),
   T.Literal('onboard.pronouns.open'),
   T.Literal('onboard.pronouns.submit'),
-  T.Literal('onboard.archetype.select'),
+  T.Literal('onboard.profile.select'),
   T.Literal('onboard.hook.open'),
   T.Literal('onboard.hook.submit'),
   T.Literal('onboard.review.open'),
   T.Literal('onboard.confirm'),
   T.Literal('onboard.edit.name'),
   T.Literal('onboard.edit.pronouns'),
-  T.Literal('onboard.edit.archetype'),
+  T.Literal('onboard.edit.profile'),
   T.Literal('onboard.edit.hook'),
   T.Literal('onboard.private-thread.open'),
 ]);
@@ -40,17 +40,11 @@ export const OnboardingActionKey = T.Union([
 export const OnboardingFieldKey = T.Union([
   T.Literal('name'),
   T.Literal('pronouns'),
-  T.Literal('archetype'),
+  T.Literal('profile'),
   T.Literal('hook'),
 ]);
 
-export const Archetype = T.Union([
-  T.Literal('frontline'),
-  T.Literal('scout'),
-  T.Literal('scholar'),
-  T.Literal('face'),
-  T.Literal('wildcard'),
-]);
+export const ProfileFieldValues = T.Record(T.String({ minLength: 1 }), T.String({ minLength: 1 }));
 
 export const OnboardingStep = T.Union([
   T.Literal('invited'),
@@ -78,7 +72,7 @@ export const CharacterHook = T.String({ minLength: 10, maxLength: 280 });
 export const CharacterDraft = T.Object({
   name: CharacterName,
   pronouns: T.Optional(CharacterPronouns),
-  archetype: Archetype,
+  profile: ProfileFieldValues,
   hook: CharacterHook,
 });
 
@@ -133,7 +127,7 @@ export const ONBOARDING_VALIDATION_RETRY_LIMIT = 2;
 // --- Static types ---
 export type OnboardingActionKeyT = Static<typeof OnboardingActionKey>;
 export type OnboardingFieldKeyT = Static<typeof OnboardingFieldKey>;
-export type ArchetypeT = Static<typeof Archetype>;
+export type ProfileFieldValuesT = Static<typeof ProfileFieldValues>;
 export type OnboardingStepT = Static<typeof OnboardingStep>;
 export type CharacterDraftT = Static<typeof CharacterDraft>;
 export type OnboardingInteractionRecordT = Static<typeof OnboardingInteractionRecord>;

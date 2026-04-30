@@ -1,10 +1,10 @@
-import type { Archetype, CharacterDraft, OnboardingStep } from '../../core/onboarding.js';
+import type { CharacterDraft, OnboardingStep } from '../../core/onboarding.js';
 
 export interface OnboardingSession {
   userId: string;
   step: OnboardingStep;
   draft: Partial<CharacterDraft>;
-  retryCounts: Record<'name' | 'pronouns' | 'archetype' | 'hook', number>;
+  retryCounts: Record<'name' | 'pronouns' | 'profile' | 'hook', number>;
   updatedAt: string;
 }
 
@@ -24,11 +24,11 @@ export class InMemoryOnboardingService {
     const created: OnboardingSession = {
       userId,
       step: 'linked',
-      draft: {},
+      draft: { profile: {} },
       retryCounts: {
         name: 0,
         pronouns: 0,
-        archetype: 0,
+        profile: 0,
         hook: 0,
       },
       updatedAt: nowIso(),
@@ -57,9 +57,10 @@ export class InMemoryOnboardingService {
     return session;
   }
 
-  setArchetype(userId: string, archetype: Archetype): OnboardingSession {
+  setProfileValue(userId: string, key: string, value: string): OnboardingSession {
     const session = this.getOrCreateSession(userId);
-    session.draft.archetype = archetype;
+    const currentProfile = session.draft.profile ?? {};
+    session.draft.profile = { ...currentProfile, [key]: value };
     session.step = 'character-drafting';
     session.updatedAt = nowIso();
     return session;

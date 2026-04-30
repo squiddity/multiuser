@@ -12,7 +12,7 @@ Concrete message-by-message interaction script lives in `docs/discord-onboarding
 
 1. A new player can join from a Discord invite and start play without operator hand-holding.
 2. Identity linking happens automatically as part of onboarding.
-3. Character creation is narrator-guided and completed in Discord.
+3. Character creation is narrator-guided in Discord using prompts from active rules/onboarding configuration.
 4. User is placed into the correct room scope and can act immediately.
 5. Every onboarding step is auditable via statements and governance logs.
 
@@ -81,7 +81,7 @@ Narrator runs a compact creation sequence (buttons/selects/modals as needed):
 
 - Character name
 - Pronouns/display preference (optional but supported)
-- High-level archetype/playstyle
+- One or more profile fields from active rules/onboarding configuration (e.g. archetype/playstyle)
 - One short backstory hook or motivation
 
 Expected UX:
