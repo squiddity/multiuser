@@ -20,8 +20,14 @@ Provide a single roadmap index for milestone status, sequencing, and handoff con
 
 3. **0003 — Discord Integration and UX Validation**
    - File: `docs/milestones/0003-discord-integration-validation.md`
+   - Run sheet: `docs/milestones/0003-discord-validation-run-sheet.md`
    - Status: **Active**
-   - Focus: verify milestones 0001–0002 behavior in real Discord chat interaction surfaces.
+   - Focus: verify milestones 0001–0002 behavior in real Discord chat interaction surfaces, including invite-driven onboarding and guided character creation.
+   - Related spec: `docs/discord-onboarding-and-character-creation.md`
+   - Interaction script: `docs/discord-onboarding-interaction-script.md`
+   - Schema draft: `docs/discord-onboarding-schema-draft.md`
+   - UX research notes: `docs/research-discord-thinking-and-status-patterns.md`
+   - Local demo bot ops: `docs/discord-demo-bot-ops.md`
 
 4. **0004 — RPG Mechanics and Command Surface**
    - File: `docs/milestones/0004-rpg-mechanics-command-surface.md`

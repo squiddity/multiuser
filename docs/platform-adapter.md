@@ -41,7 +41,7 @@ A persistent mapping table, itself stored as statements in a `mapping` scope:
 
 - **Room ↔ platform container.** Room id → (platform, channel/thread id). One room may have multiple platform mappings if projected to more than one platform.
 - **Role ↔ platform role + permission set.** System role id → (platform, platform role id, permission overwrites). Permissions are derived from the room's scope binding and the role's read/write/notify capabilities, then expressed in platform terms.
-- **User ↔ platform identity.** System user id → (platform, platform user id), with a link token flow for enrollment.
+- **User ↔ platform identity.** `userId` (cross-account identity) → (`userAccountType`, `userAccountId`), with a link token flow for enrollment.
 
 Mapping records are append-only with supersedes chains, so "the channel id changed after Discord migration" is a normal history event, not a data-loss condition.
 
@@ -98,8 +98,8 @@ The system acts in each platform via a bot identity.
 - **Threads.** Used for sub-scopes within a room (e.g. a specific scene within a party) when we want platform-level separation without creating a new room. Thread messages still write to the parent room's scope unless explicitly scoped otherwise.
 - **Reactions.** Consumable as a lightweight feedback signal (e.g. GM upvotes a canonization proposal), recorded as statements in the originating room.
 - **Rate limits.** Discord's per-route limits are well-documented; the reconciler respects them. Bulk operations (large role re-assignment) must be batched.
-- **Identity linking.** Enrollment flow: user runs `/link` command in a bootstrapping channel; bot issues a link token; token is redeemed via a web endpoint tying Discord user id to system user id. Without linking, a Discord user has no capabilities in our system.
-- **Discord identity vs. character identity.** Discord user id maps to system user id; character identity is a separate layer (see `memory-model.md` → User–character relationship). A Discord user may act as multiple characters via `/act-as` (deferred post-v1), and a delegated admin may puppet another user's character. Statement attribution keeps the real Discord-authenticated user as `authorId` regardless of which character the message is rendered as.
+- **Identity linking.** Enrollment flow ties a Discord account (`userAccountType=discord`, `userAccountId=<discord-user-id>`) to a cross-account `userId`. Without linking, a Discord account has no capabilities in our system.
+- **Discord account identity vs. character identity.** Discord account identity maps to `userId`; character identity is a separate layer (see `memory-model.md` → User–character relationship). v1 enforces one active `characterId` per `userAccountId` in shared roleplay channels; reassignment of a character to a different account is handled as auditable mapping/governance change. Statement attribution keeps the authenticated account/user provenance as `authorId` regardless of rendering persona.
 
 ## Governance logging
 

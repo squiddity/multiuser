@@ -41,6 +41,7 @@ const EnvSchema = withValidation(
     EMBED_DIM: Type.Optional(Type.Integer({ minimum: 1, default: 1536 })),
     LONG_CONTENT_WARN_CHARS: Type.Optional(Type.Integer({ minimum: 1, default: 6000 })),
     DISCORD_BOT_TOKEN: Type.Optional(Type.String()),
+    DISCORD_GUILD_ID: Type.Optional(Type.String()),
     DEFAULT_MODEL_SPEC: Type.Optional(Type.String()),
     LOG_DB_NOTICES: Type.Optional(
       Type.Union([Type.Literal('0'), Type.Literal('1')], { default: '0' }),
@@ -71,6 +72,7 @@ export type Env = {
   EMBED_DIM: number;
   LONG_CONTENT_WARN_CHARS: number;
   DISCORD_BOT_TOKEN?: string;
+  DISCORD_GUILD_ID?: string;
   DEFAULT_MODEL_SPEC?: string;
   LOG_DB_NOTICES: boolean;
   LOG_LLM_INPUT: boolean;
@@ -109,6 +111,7 @@ export const env: Env = {
   EMBED_DIM: parsed.EMBED_DIM ?? 1536,
   LONG_CONTENT_WARN_CHARS: parsed.LONG_CONTENT_WARN_CHARS ?? 6000,
   DISCORD_BOT_TOKEN: parsed.DISCORD_BOT_TOKEN,
+  DISCORD_GUILD_ID: parsed.DISCORD_GUILD_ID,
   DEFAULT_MODEL_SPEC: parsed.DEFAULT_MODEL_SPEC,
   LOG_DB_NOTICES: parsed.LOG_DB_NOTICES === '1',
   LOG_LLM_INPUT: parsed.LOG_LLM_INPUT === '1',

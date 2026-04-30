@@ -482,6 +482,13 @@ Format:
 - **R** — Fixed waits were provider-dependent and brittle. Polling improves reliability across hosted and local models while still allowing deterministic timeout classification (`infra-flake`/`review`) when outcomes do not appear.
 - **S** — complete (v1 demo harness).
 
+### D62. Identity naming and account model
+
+- **Q** — how should person identity, platform-account identity, and character identity be named and separated in v1?
+- **D** — Use `userId` for the cross-account human identity, `userAccountId` for a specific platform account (with `userAccountType`; v1 supports `discord`), and `characterId` for in-world identity. v1 enforces one active character per `userAccountId` in shared roleplay channels; reassignment of a character to a different `userAccountId` remains supported through auditable mapping changes.
+- **R** — This keeps core identity stable while allowing account-level portability and defers multi-character-in-one-shared-room UX complexity.
+- **S** — v1.
+
 ---
 
 ## Remaining open items

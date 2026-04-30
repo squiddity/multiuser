@@ -13,6 +13,7 @@ import { liveResponderWorker } from './workers/live-responder.js';
 import { openQuestionResolverWorker } from './workers/open-question-resolver.js';
 import { steeringFormalizerWorker } from './workers/steering-formalizer.js';
 import { serve } from '@hono/node-server';
+import { startDiscordDemoBot, type DiscordDemoBotController } from './adapters/discord/demo-bot.js';
 
 const ADMIN_ROOM_ID = '22222222-2222-2222-2222-222222222222';
 
@@ -72,6 +73,18 @@ async function main(): Promise<void> {
 
   await scheduler.start();
 
+  let discordBot: DiscordDemoBotController | undefined;
+  if (env.DISCORD_BOT_TOKEN) {
+    discordBot = await startDiscordDemoBot({
+      token: env.DISCORD_BOT_TOKEN,
+      guildId: env.DISCORD_GUILD_ID,
+      logger,
+    });
+    logger.info({ guildId: env.DISCORD_GUILD_ID }, 'discord demo bot started');
+  } else {
+    logger.info('DISCORD_BOT_TOKEN not set; discord demo bot not started');
+  }
+
   const app = createApp(events);
   const port = getPort();
   const server = serve({
@@ -85,6 +98,9 @@ async function main(): Promise<void> {
   const shutdown = async (sig: string) => {
     logger.info({ sig }, 'shutting down');
     await scheduler.stop();
+    if (discordBot) {
+      await discordBot.stop();
+    }
     await close();
     process.exit(0);
   };
