@@ -4,7 +4,11 @@
 
 Track known-working model specs and preserve the previous default so local/dev sessions can switch between providers safely.
 
-## Previous local default (before OpenRouter switch tests)
+## Current default for demos and bot runs
+
+- `DEFAULT_MODEL_SPEC=openrouter:deepseek/deepseek-chat`
+
+## Previous local default (fallback)
 
 - `DEFAULT_MODEL_SPEC=local:user.Qwen3.6-35B-A3B-ThinkingCoder`
 
@@ -15,16 +19,17 @@ Track known-working model specs and preserve the previous default so local/dev s
 - `openrouter:deepseek/deepseek-r1` — returned empty text in current runtime path.
 - `openrouter:deepseek/deepseek-v4-pro` — returned empty text in current runtime path.
 
-## Candidate under test
+## Current recommendation
 
-- `openrouter:deepseek/deepseek-v4-flash`
+- `openrouter:deepseek/deepseek-chat` — current default for demo and Discord bot runs.
+- `openrouter:deepseek/deepseek-v4-flash` — validated in the fixed OpenRouter runtime path and remains an alternate OpenRouter option.
 
 ## Quick switch examples
 
 Use one-off env override:
 
 ```bash
-DEFAULT_MODEL_SPEC=openrouter:deepseek/deepseek-v4-flash pnpm demo:cli
+DEFAULT_MODEL_SPEC=openrouter:deepseek/deepseek-chat pnpm demo:cli
 ```
 
 Restore previous local default:

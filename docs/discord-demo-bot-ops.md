@@ -10,6 +10,7 @@ Set these in `.env`:
 
 ```env
 DATABASE_URL=postgres://...
+DEFAULT_MODEL_SPEC=openrouter:deepseek/deepseek-chat
 DISCORD_BOT_TOKEN=your_bot_token
 DISCORD_GUILD_ID=optional_test_guild_id
 ```
@@ -29,6 +30,8 @@ What starts:
 
 - API server + workers
 - Discord demo bot (if `DISCORD_BOT_TOKEN` is set)
+
+The bot uses `DEFAULT_MODEL_SPEC` for live narrator/worker behavior. The current default is `openrouter:deepseek/deepseek-chat`.
 
 Startup log should include:
 

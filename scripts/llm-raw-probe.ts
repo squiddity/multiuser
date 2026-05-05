@@ -37,6 +37,14 @@ function resolveModel(spec: string) {
   }
 
   if (provider === 'openrouter') {
+    const resolved = getModel(provider as never, modelId as never);
+    const needsPatch =
+      !resolved || resolved.api === 'unknown' || !('baseUrl' in resolved) || !resolved.baseUrl;
+
+    if (!needsPatch) {
+      return resolved;
+    }
+
     return {
       id: modelId,
       name: `${modelId} (${provider})`,
