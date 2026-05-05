@@ -278,7 +278,9 @@ async function main(): Promise<void> {
   const workers = new WorkerRegistry();
   const scheduler = new CronerScheduler(workers, logger, events);
 
-  workers.register(briefingGeneratorWorker);
+  if (env.ENABLE_BRIEFING_GENERATOR) {
+    workers.register(briefingGeneratorWorker);
+  }
   workers.register(openQuestionResolverWorker);
   workers.register(steeringFormalizerWorker);
   await scheduler.schedule(
@@ -294,7 +296,7 @@ async function main(): Promise<void> {
 
   // Register briefing generator: triggers on party activity events
   // Worker itself checks for idle windows and groups recent statements
-  if (env.DEFAULT_MODEL_SPEC) {
+  if (env.DEFAULT_MODEL_SPEC && env.ENABLE_BRIEFING_GENERATOR) {
     const briefingConfig = {
       partyRoomId: PARTY_ROOM.id,
       adminRoomId: ADMIN_ROOM.id,
@@ -315,6 +317,8 @@ async function main(): Promise<void> {
       'briefing-generator',
       briefingConfig,
     );
+  } else if (!env.ENABLE_BRIEFING_GENERATOR) {
+    console.log('\n  ℹ  briefing-generator disabled via ENABLE_BRIEFING_GENERATOR=0\n');
   }
 
   if (env.DEFAULT_MODEL_SPEC) {

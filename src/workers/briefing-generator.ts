@@ -1,3 +1,4 @@
+import { randomUUID } from 'node:crypto';
 import { Type, type Static } from 'typebox';
 import { withValidation } from '../lib/typebox.js';
 import type { Worker } from '../core/worker.js';
@@ -107,11 +108,41 @@ export const briefingGeneratorWorker: Worker<BriefingGeneratorPayload> = {
     try {
       const summaryPrompt = `Summarize the following party activity into a concise admin briefing (2-3 sentences). Focus on key events, any items requiring GM attention, and unresolved questions.\n\n${partyInputs.map((i) => `- [${i.kind}] ${i.content}`).join('\n')}\n\nBriefing:`;
 
+      const llmRequestId = randomUUID();
+      ctx.logger.info(
+        {
+          llmRequestId,
+          triggerId,
+          partyRoomId,
+          modelSpec,
+          promptChars: summaryPrompt.length,
+        },
+        'briefing-generator: llm request start',
+      );
+
       const result = await llmRuntime.generate({
         modelSpec,
         systemPrompt: 'You are a GM-assistant briefing generator. Return plain text only.',
         prompt: summaryPrompt,
+        metadata: {
+          requestId: llmRequestId,
+          caller: 'briefing-generator.handler',
+          worker: 'briefing-generator',
+          triggerId,
+          roomId: partyRoomId,
+        },
       });
+
+      ctx.logger.info(
+        {
+          llmRequestId,
+          triggerId,
+          partyRoomId,
+          modelSpec,
+          responseChars: result.text.length,
+        },
+        'briefing-generator: llm request success',
+      );
 
       briefingContent = result.text.trim() || makeBriefingContent(partyInputs);
     } catch (err) {

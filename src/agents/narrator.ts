@@ -1,3 +1,4 @@
+import { randomUUID } from 'node:crypto';
 import { loadAgentPrompt } from '../store/content.js';
 import { getRoom } from '../store/rooms.js';
 import { listActiveSteeringFor } from '../store/steering.js';
@@ -28,6 +29,9 @@ export interface NarratorConfig {
   llmRuntime?: LlmRuntime;
   statementStore?: StatementStore;
 }
+
+const EMPTY_OUTPUT_FALLBACK =
+  'The world stirs, but the answer catches in the wind before it can be spoken.';
 
 export class Narrator {
   private readonly config: NarratorConfig;
@@ -64,11 +68,29 @@ export class Narrator {
     }
 
     try {
+      const llmRequestId = randomUUID();
       const result = await this.llmRuntime.generate({
         modelSpec: this.config.modelSpec,
         systemPrompt: prompt.content,
         prompt: userPrompt,
+        metadata: {
+          requestId: llmRequestId,
+          caller: 'narrator.compose',
+          roomId,
+          userId,
+        },
       });
+
+      logger.info(
+        {
+          roomId,
+          userId,
+          modelSpec: this.config.modelSpec,
+          responseChars: result.text.length,
+          responsePreview: result.text.slice(0, 240),
+        },
+        'narrator: llm output received',
+      );
 
       const parsed = this.parseOutput(result.text);
       return parsed;
@@ -193,14 +215,23 @@ Return valid JSON only, no additional text.`;
   }
 
   private parseOutput(text: string): NarratorOutput {
+    const trimmed = text.trim();
+    if (!trimmed) {
+      logger.error('narrator: llm returned empty output; using deterministic fallback narration');
+      return {
+        kind: 'narration',
+        content: EMPTY_OUTPUT_FALLBACK,
+      };
+    }
+
     try {
-      const jsonMatch = text.match(/\{[\s\S]*\}/);
+      const jsonMatch = trimmed.match(/\{[\s\S]*\}/);
       if (!jsonMatch) {
         throw new Error('no JSON found');
       }
       const parsed = JSON.parse(jsonMatch[0]!);
 
-      if (!parsed.kind || !parsed.content) {
+      if (!parsed.kind || typeof parsed.content !== 'string') {
         throw new Error('missing required fields');
       }
 
@@ -208,20 +239,29 @@ Return valid JSON only, no additional text.`;
         throw new Error(`invalid kind: ${parsed.kind}`);
       }
 
+      const content = parsed.content.trim();
+      if (!content) {
+        throw new Error('empty content');
+      }
+
       return {
         kind: parsed.kind,
-        content: parsed.content,
+        content,
         openQuestion: parsed.openQuestion,
       };
     } catch (err) {
       logger.warn(
-        { text: text.substring(0, 200) },
-        'narrator: failed to parse output, using as narration',
+        {
+          err,
+          responseChars: text.length,
+          textPreview: text.substring(0, 200),
+        },
+        'narrator: failed to parse output, using fallback narration',
       );
 
       return {
         kind: 'narration',
-        content: text.substring(0, 500),
+        content: EMPTY_OUTPUT_FALLBACK,
       };
     }
   }

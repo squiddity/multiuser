@@ -12,6 +12,14 @@ export interface LlmRuntimeRequest {
   systemPrompt: string;
   prompt: string;
   tools?: Record<string, LlmToolDefinition>;
+  metadata?: {
+    requestId?: string;
+    caller?: string;
+    worker?: string;
+    triggerId?: string;
+    roomId?: string;
+    userId?: string;
+  };
 }
 
 export interface LlmRuntimeResponse {

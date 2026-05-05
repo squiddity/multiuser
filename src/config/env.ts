@@ -43,6 +43,13 @@ const EnvSchema = withValidation(
     DISCORD_BOT_TOKEN: Type.Optional(Type.String()),
     DISCORD_GUILD_ID: Type.Optional(Type.String()),
     DEFAULT_MODEL_SPEC: Type.Optional(Type.String()),
+    LLM_CALL_TIMEOUT_MS: Type.Optional(Type.Integer({ minimum: 1000, default: 90000 })),
+    ENABLE_BRIEFING_GENERATOR: Type.Optional(
+      Type.Union([Type.Literal('0'), Type.Literal('1')], { default: '1' }),
+    ),
+    LLM_SERIALIZE_CALLS: Type.Optional(
+      Type.Union([Type.Literal('0'), Type.Literal('1')], { default: '0' }),
+    ),
     LOG_DB_NOTICES: Type.Optional(
       Type.Union([Type.Literal('0'), Type.Literal('1')], { default: '0' }),
     ),
@@ -74,6 +81,9 @@ export type Env = {
   DISCORD_BOT_TOKEN?: string;
   DISCORD_GUILD_ID?: string;
   DEFAULT_MODEL_SPEC?: string;
+  LLM_CALL_TIMEOUT_MS: number;
+  ENABLE_BRIEFING_GENERATOR: boolean;
+  LLM_SERIALIZE_CALLS: boolean;
   LOG_DB_NOTICES: boolean;
   LOG_LLM_INPUT: boolean;
 };
@@ -90,6 +100,9 @@ const parsed = EnvSchema.parse({
     : undefined,
   LONG_CONTENT_WARN_CHARS: process.env.LONG_CONTENT_WARN_CHARS
     ? Number(process.env.LONG_CONTENT_WARN_CHARS)
+    : undefined,
+  LLM_CALL_TIMEOUT_MS: process.env.LLM_CALL_TIMEOUT_MS
+    ? Number(process.env.LLM_CALL_TIMEOUT_MS)
     : undefined,
 });
 
@@ -113,6 +126,9 @@ export const env: Env = {
   DISCORD_BOT_TOKEN: parsed.DISCORD_BOT_TOKEN,
   DISCORD_GUILD_ID: parsed.DISCORD_GUILD_ID,
   DEFAULT_MODEL_SPEC: parsed.DEFAULT_MODEL_SPEC,
+  LLM_CALL_TIMEOUT_MS: parsed.LLM_CALL_TIMEOUT_MS ?? 90000,
+  ENABLE_BRIEFING_GENERATOR: parsed.ENABLE_BRIEFING_GENERATOR !== '0',
+  LLM_SERIALIZE_CALLS: parsed.LLM_SERIALIZE_CALLS === '1',
   LOG_DB_NOTICES: parsed.LOG_DB_NOTICES === '1',
   LOG_LLM_INPUT: parsed.LOG_LLM_INPUT === '1',
 };

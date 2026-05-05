@@ -9,6 +9,8 @@ const PARTY_ROOM_ID = '11111111-1111-1111-1111-111111111111';
 const ADMIN_ROOM_ID = '22222222-2222-2222-2222-222222222222';
 const DEMO_OPEN_QUESTION_ID = '77777777-7777-4777-8777-777777777777';
 const RECALL_QUESTION = 'Who does the sigil on the north gate belong to?';
+const EMPTY_OUTPUT_FALLBACK =
+  'The world stirs, but the answer catches in the wind before it can be spoken.';
 
 const shouldReset = process.env.DEMO_CLI_RESET !== '0';
 const hasLiveResponder = Boolean(process.env.DEFAULT_MODEL_SPEC?.trim());
@@ -22,6 +24,10 @@ const fallbackWaitMs = Number(
 const pollTimeoutMs = Number(
   process.env.DEMO_POLL_TIMEOUT_MS ??
     (process.env.DEFAULT_MODEL_SPEC?.startsWith('local:') ? '45000' : '20000'),
+);
+const slowPollTimeoutMs = Number(
+  process.env.DEMO_SLOW_POLL_TIMEOUT_MS ??
+    (process.env.DEFAULT_MODEL_SPEC?.startsWith('local:') ? '120000' : '45000'),
 );
 const pollIntervalMs = Number(process.env.DEMO_POLL_INTERVAL_MS ?? '500');
 
@@ -48,7 +54,7 @@ function createMilestone0002Checks(scenario) {
 }
 
 function outputSuggestsProviderFailure(output) {
-  return /\b(429|rate limit|insufficient credits|quota|api key|unauthorized|forbidden|provider|transport|ECONNRESET|ETIMEDOUT|timeout|LLM call failed|narrator: compose failed)\b/i.test(
+  return /\b(429|rate limit|insufficient credits|quota|api key|unauthorized|forbidden|provider|transport|ECONNRESET|ETIMEDOUT|timeout|LLM call failed|narrator: compose failed|llm returned empty output)\b/i.test(
     output,
   );
 }
@@ -156,7 +162,7 @@ function createPollQueries(sql) {
   };
 }
 
-async function maybePoll({ label, getCount, targetCount }) {
+async function maybePoll({ label, getCount, targetCount, timeoutMs = pollTimeoutMs }) {
   if (!getCount) {
     process.stdout.write(
       `[demo-driver] polling unavailable for ${label}; sleeping fallback ${fallbackWaitMs}ms\n`,
@@ -164,7 +170,7 @@ async function maybePoll({ label, getCount, targetCount }) {
     await sleep(fallbackWaitMs);
     return false;
   }
-  return waitForCount({ label, getCount, targetCount });
+  return waitForCount({ label, getCount, targetCount, timeoutMs });
 }
 
 async function runVerticalSliceScenario(child, pollQueries) {
@@ -196,11 +202,23 @@ async function runVerticalSliceScenario(child, pollQueries) {
     writeCommand(child, 'room party-1');
     await sleep(900);
     writeCommand(child, `/say ${RECALL_QUESTION}`);
-    await maybePoll({
+    const recallSatisfied = await maybePoll({
       label: 'party narrator responses (recall)',
       getCount: pollQueries?.narratorCount,
       targetCount: narratorBaseline + 1,
+      timeoutMs: pollTimeoutMs,
     });
+    if (!recallSatisfied) {
+      process.stdout.write(
+        `[demo-driver] recall response not observed in primary timeout; extending wait up to ${slowPollTimeoutMs}ms\n`,
+      );
+      await maybePoll({
+        label: 'party narrator responses (recall, extended)',
+        getCount: pollQueries?.narratorCount,
+        targetCount: narratorBaseline + 1,
+        timeoutMs: slowPollTimeoutMs,
+      });
+    }
     writeCommand(child, '/ls');
   }
 
@@ -415,24 +433,29 @@ async function assessVerticalSlice(sql) {
   if (!answer) {
     process.stdout.write('[demo-assess] no narrator reply found after recall prompt\n');
     checks.recall_mentions_canon = {
-      status: 'review',
-      reason: 'no narrator reply found after recall prompt',
+      status: 'fail',
+      reason: outputSuggestsProviderFailure(childOutput)
+        ? 'narrator did not return a usable recall reply; provider/runtime failure suspected'
+        : 'narrator did not return a usable recall reply after prompt',
     };
     return checks;
   }
 
   process.stdout.write(`[demo-assess] narrator recall answer: ${answer}\n`);
   const mentionsCanon = /ashen cartographers|cartographers guild/i.test(answer);
+  const usedEmptyFallback = answer === EMPTY_OUTPUT_FALLBACK;
   process.stdout.write(
-    `[demo-assess] qualitative check (mentions Ashen Cartographers): ${mentionsCanon ? 'PASS' : 'REVIEW'}\n`,
+    `[demo-assess] qualitative check (mentions Ashen Cartographers): ${mentionsCanon ? 'PASS' : 'FAIL'}\n`,
   );
 
   checks.recall_mentions_canon = {
-    status: mentionsCanon ? 'pass' : 'review',
+    status: mentionsCanon ? 'pass' : 'fail',
     reason: mentionsCanon
       ? 'narrator recall mentions canonized group'
-      : 'narrator recall did not clearly mention canonized group',
-    evidence: { answer },
+      : usedEmptyFallback
+        ? 'narrator model returned empty output; deterministic fallback was emitted instead (provider/runtime failure)'
+        : 'narrator recall did not clearly mention canonized group',
+    evidence: { answer, usedEmptyFallback },
   };
 
   return checks;
@@ -727,7 +750,7 @@ async function main() {
   }
 
   process.stdout.write(
-    `[demo-driver] options: DEMO_SCENARIO=${demoScenario} DEMO_SHOW_DB_NOTICES=${showDbNotices ? '1' : '0'} DEMO_LOG_LLM_INPUT=${logLlmInput ? '1' : '0'} DEMO_POLL_TIMEOUT_MS=${pollTimeoutMs} DEMO_POLL_INTERVAL_MS=${pollIntervalMs} DEMO_LIVE_WAIT_MS=${fallbackWaitMs}\n`,
+    `[demo-driver] options: DEMO_SCENARIO=${demoScenario} DEMO_SHOW_DB_NOTICES=${showDbNotices ? '1' : '0'} DEMO_LOG_LLM_INPUT=${logLlmInput ? '1' : '0'} DEMO_POLL_TIMEOUT_MS=${pollTimeoutMs} DEMO_SLOW_POLL_TIMEOUT_MS=${slowPollTimeoutMs} DEMO_POLL_INTERVAL_MS=${pollIntervalMs} DEMO_LIVE_WAIT_MS=${fallbackWaitMs}\n`,
   );
 
   const childEnv = {
