@@ -12,6 +12,7 @@ import { createApp, getPort } from './api/app.js';
 import { liveResponderWorker } from './workers/live-responder.js';
 import { openQuestionResolverWorker } from './workers/open-question-resolver.js';
 import { steeringFormalizerWorker } from './workers/steering-formalizer.js';
+import { briefingGeneratorWorker } from './workers/briefing-generator.js';
 import { serve } from '@hono/node-server';
 import { startDiscordDemoBot, type DiscordDemoBotController } from './adapters/discord/demo-bot.js';
 
@@ -36,8 +37,40 @@ async function main(): Promise<void> {
   const workers = new WorkerRegistry();
   const resolvers = new ResolverRegistry();
   const scheduler = new CronerScheduler(workers, logger, events);
+  const discordBotEnabled = Boolean(env.DISCORD_BOT_TOKEN);
 
-  if (env.DEFAULT_MODEL_SPEC) {
+  if (env.ENABLE_BRIEFING_GENERATOR) {
+    workers.register(briefingGeneratorWorker);
+    logger.info('briefing-generator registered');
+  } else {
+    logger.info('ENABLE_BRIEFING_GENERATOR=0; briefing-generator not registered');
+  }
+
+  if (env.DEFAULT_MODEL_SPEC && env.ENABLE_BRIEFING_GENERATOR) {
+    const briefingConfig = {
+      partyRoomId: '11111111-1111-1111-1111-111111111111',
+      adminRoomId: ADMIN_ROOM_ID,
+      modelSpec: env.DEFAULT_MODEL_SPEC,
+    };
+    await scheduler.schedule(
+      { type: 'event', predicate: { kind: 'dialogue', scopeType: 'party' } },
+      'briefing-generator',
+      briefingConfig,
+    );
+    await scheduler.schedule(
+      { type: 'event', predicate: { kind: 'pose', scopeType: 'party' } },
+      'briefing-generator',
+      briefingConfig,
+    );
+    await scheduler.schedule(
+      { type: 'event', predicate: { kind: 'narration', scopeType: 'party' } },
+      'briefing-generator',
+      briefingConfig,
+    );
+    logger.info({ modelSpec: env.DEFAULT_MODEL_SPEC }, 'briefing-generator schedules registered');
+  }
+
+  if (env.DEFAULT_MODEL_SPEC && !discordBotEnabled) {
     workers.register(liveResponderWorker);
     const liveConfig = { adminRoomId: ADMIN_ROOM_ID, modelSpec: env.DEFAULT_MODEL_SPEC };
     await scheduler.schedule(
@@ -51,8 +84,10 @@ async function main(): Promise<void> {
       liveConfig,
     );
     logger.info({ modelSpec: env.DEFAULT_MODEL_SPEC }, 'live-responder registered');
-  } else {
+  } else if (!env.DEFAULT_MODEL_SPEC) {
     logger.info('DEFAULT_MODEL_SPEC not set; live-responder not registered');
+  } else {
+    logger.info('live-responder not registered; Discord adapter handles live narration');
   }
 
   workers.register(openQuestionResolverWorker);
@@ -79,6 +114,7 @@ async function main(): Promise<void> {
       token: env.DISCORD_BOT_TOKEN,
       guildId: env.DISCORD_GUILD_ID,
       logger,
+      events,
     });
     logger.info({ guildId: env.DISCORD_GUILD_ID }, 'discord demo bot started');
   } else {

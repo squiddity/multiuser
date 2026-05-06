@@ -122,6 +122,7 @@ src/
       client.ts
       commands/         # slash command definitions
       components/       # buttons, modals, select menus
+      party-turns.ts    # shared-channel party narration submission path
       webhooks.ts       # NPC impersonation pool
       reconciler.ts
       drift-auditor.ts

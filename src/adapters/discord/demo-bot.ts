@@ -5,6 +5,7 @@ import {
   Client,
   GatewayIntentBits,
   ModalBuilder,
+  SlashCommandBuilder,
   StringSelectMenuBuilder,
   TextInputBuilder,
   TextInputStyle,
@@ -27,6 +28,8 @@ import {
 } from '../../resolvers/tools/render.js';
 import { validateCharacterDraft, formatValidationErrors } from '../../resolvers/tools/validate.js';
 import { env } from '../../config/env.js';
+import type { EventBus } from '../../core/events.js';
+import { submitDiscordPartyTurn } from './party-turns.js';
 
 const DEFAULT_MODEL = 'openrouter:deepseek/deepseek-v4-flash';
 
@@ -103,10 +106,12 @@ export async function startDiscordDemoBot({
   token,
   guildId,
   logger,
+  events,
 }: {
   token: string;
   guildId?: string;
   logger: Logger;
+  events: EventBus;
 }): Promise<DiscordDemoBotController> {
   const client = new Client({
     intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildMessages],
@@ -141,6 +146,34 @@ export async function startDiscordDemoBot({
           content: `${output.message}\n${output.progress}`,
           components: renderAgentComponents(output.components),
         });
+        return;
+      }
+
+      if (interaction.isChatInputCommand() && interaction.commandName === 'say') {
+        const text = interaction.options.getString('text', true);
+        const displayName =
+          interaction.member && 'displayName' in interaction.member
+            ? interaction.member.displayName
+            : interaction.user.displayName;
+
+        await interaction.deferReply();
+
+        const result = await submitDiscordPartyTurn({
+          userId: interaction.user.id,
+          text,
+          modelSpec: env.DEFAULT_MODEL_SPEC || DEFAULT_MODEL,
+          events,
+          logger,
+          fields: {
+            discordChannelId: interaction.channelId,
+            discordGuildId: interaction.guildId,
+            discordUserId: interaction.user.id,
+            discordDisplayName: displayName,
+          },
+        });
+
+        await interaction.editReply(`**${displayName}:** ${text}`);
+        await interaction.followUp({ content: result.output.content });
         return;
       }
 
@@ -424,8 +457,16 @@ async function registerCommands(
   if (!client.application) return;
 
   const commands = [
-    { name: 'start-onboarding', description: 'Start the onboarding flow' },
-    { name: 'ping', description: 'Check bot liveness' },
+    new SlashCommandBuilder()
+      .setName('say')
+      .setDescription('Submit an in-character action or line to the party narrator')
+      .addStringOption((option) =>
+        option.setName('text').setDescription('What your character says or does').setRequired(true),
+      ),
+    new SlashCommandBuilder()
+      .setName('start-onboarding')
+      .setDescription('Start the onboarding flow'),
+    new SlashCommandBuilder().setName('ping').setDescription('Check bot liveness'),
   ];
 
   if (guildId) {

@@ -112,11 +112,23 @@ The demo bot's hardcoded state machine has been replaced with the agentic patter
   - `test/integration/onboarding-store.test.ts` (2 tests) — onboarding wrapper restart-safe reconstruction and reset semantics
   - `test/integration/workflow-session-store.test.ts` (2 tests) — generic statement-backed workflow session reconstruction and reset semantics
 
+### Discord narration command surface (2026-05-06)
+
+- ✅ Added `/say` to the Discord demo bot as the first shared-channel party narration input.
+- ✅ `/say` now:
+  - ensures the Discord user has the demo player grant for the seeded party room,
+  - appends a `dialogue` statement in party scope,
+  - invokes the existing `Narrator` path directly for Discord turns,
+  - emits follow-on statement events for narrator output so downstream workers can react.
+- ✅ Added `src/adapters/discord/party-turns.ts` as the thin Discord-side party-turn service.
+- ✅ Registered `briefing-generator` in the main service lifecycle and disabled duplicate `live-responder` scheduling when the Discord adapter is active, so Discord-driven turns can produce briefings without duplicate narrator responses.
+- ✅ Added integration coverage in `test/integration/discord-party-turns.test.ts` for statement writes, event emission, and automatic grant creation.
+
 ### Still to do
 
 - [ ] Run full run-sheet validation against the agentic flow (live Discord bot test).
 - [ ] Room and role projection checks (channels, permissions, mappings).
-- [ ] Core party narration loop in Discord.
+- [ ] Live-validate core party narration loop in Discord.
 - [ ] Open-question and canonization loop in Discord.
 - [ ] Briefing and steering loop in Discord.
 - [ ] NPC/webhook rendering checks.

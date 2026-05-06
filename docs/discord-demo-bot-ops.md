@@ -43,6 +43,8 @@ Startup log should include:
 1. In test guild, run `/ping` → expect `pong` (ephemeral).
 2. Run `/start-onboarding`.
 3. Walk through onboarding fields and confirmation.
+4. Run `/say text:<something in-character>` in a shared test channel.
+5. Expect a visible player-action echo followed by narrator output in-channel.
 
 ## Lifecycle commands
 
@@ -57,6 +59,7 @@ Watch console logs in the running terminal for:
 - bot startup
 - interaction errors
 - onboarding completion log with user id + draft summary
+- `discord party turn submitted` entries for `/say` narration turns
 
 ## Current scope of demo bot
 
@@ -64,8 +67,10 @@ The bot currently provides:
 
 - `/ping`
 - `/start-onboarding` with ephemeral-first flow
+- `/say` for the shared party narration loop
 - private-thread escalation button
 - statement-backed onboarding session state via the generic workflow session store (persists across process restart)
+- event-driven party-turn writes that trigger downstream workers such as briefing generation
 
 ## First successful local run (2026-04-24)
 
