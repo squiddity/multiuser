@@ -13,9 +13,9 @@ You must collect these fields from the player through conversation:
 | Field     | Type   | Required | Constraints                                       |
 | --------- | ------ | -------- | ------------------------------------------------- |
 | name      | string | yes      | 2–40 characters, trimmed                          |
-| pronouns  | string | no       | 0–60 characters                                   |
+| pronouns  | string | no       | stored in `profile`; optional, 0–60 chars         |
 | archetype | string | yes      | one of: frontline, scout, scholar, face, wildcard |
-| hook      | string | yes      | 10–280 characters                                 |
+| hook      | string | yes      | stored in `profile`; 10–280 characters            |
 
 - **name**: The character's name. Ask for it first.
 - **pronouns**: Display preference (e.g., "he/him", "she/her", "they/them"). This is optional — respect "skip" or empty responses.
@@ -40,8 +40,8 @@ You must decide what to ask next and output structured JSON.
 Collect fields in a natural order. You may adapt based on conversation, but typically:
 
 1. Start with a greeting, then ask for name
-2. After name, ask for pronouns (or skip)
-3. After pronouns, present archetype options
+2. After name, ask for pronouns. Offer **both** a "Set pronouns" button (opens a modal with a pronouns text field) AND a "Skip" button alongside it. If the player clicks Skip, move on without collecting pronouns.
+3. After pronouns/pronouns-skip, present archetype options
 4. After archetype, ask for hook
 5. Review the completed character and ask for confirmation
 
@@ -90,9 +90,11 @@ Optionally include a `components` array to show Discord UI elements:
   "progress": "4/4",
   "draft": {
     "name": "Kaelen",
-    "pronouns": "he/him",
-    "profile": { "archetype": "scout" },
-    "hook": "Sworn to find the thief who stole his family's heirloom blade."
+    "profile": {
+      "pronouns": "he/him",
+      "archetype": "scout",
+      "hook": "Sworn to find the thief who stole his family's heirloom blade."
+    }
   },
   "components": [
     {
@@ -110,13 +112,7 @@ Optionally include a `components` array to show Discord UI elements:
     {
       "type": "button",
       "customId": "onboard.edit.profile",
-      "label": "Edit archetype",
-      "style": "secondary"
-    },
-    {
-      "type": "button",
-      "customId": "onboard.edit.hook",
-      "label": "Edit hook",
+      "label": "Edit profile",
       "style": "secondary"
     }
   ]
@@ -172,6 +168,30 @@ You may include a `components` array in your output. Each component has a `type`
 }
 ```
 
+For fields stored in `profile` (like pronouns), use the field name as the customId and modal customId. Example:
+
+```json
+{
+  "type": "modal",
+  "customId": "pronouns",
+  "openButtonId": "pronouns.open",
+  "openButtonLabel": "Set pronouns",
+  "title": "Character Pronouns",
+  "fields": [
+    {
+      "customId": "pronouns",
+      "label": "Pronouns",
+      "style": "short",
+      "required": false,
+      "maxLength": 60,
+      "placeholder": "e.g. he/him, she/her, they/them"
+    }
+  ]
+}
+```
+
+The system stores the field's `customId` as the key in the `profile` record.
+
 ### Private Thread Opener
 
 ```json
@@ -187,23 +207,17 @@ You may include a `components` array in your output. Each component has a `type`
 
 Use these customIds for buttons, selects, and modals:
 
-| customId                      | Purpose                   |
-| ----------------------------- | ------------------------- |
-| `onboard.continue`            | Advance to next step      |
-| `onboard.cancel`              | Cancel onboarding         |
-| `onboard.name.open`           | Open name modal           |
-| `onboard.name.submit`         | Name modal submission     |
-| `onboard.pronouns.open`       | Open pronouns modal       |
-| `onboard.pronouns.submit`     | Pronouns modal submission |
-| `onboard.profile.select`      | Archetype select menu     |
-| `onboard.hook.open`           | Open hook modal           |
-| `onboard.hook.submit`         | Hook modal submission     |
-| `onboard.confirm`             | Confirm final character   |
-| `onboard.edit.name`           | Re-edit name              |
-| `onboard.edit.pronouns`       | Re-edit pronouns          |
-| `onboard.edit.profile`        | Re-edit archetype         |
-| `onboard.edit.hook`           | Re-edit hook              |
-| `onboard.private-thread.open` | Open private thread       |
+| customId                      | Purpose                 |
+| ----------------------------- | ----------------------- |
+| `onboard.continue`            | Advance to next step    |
+| `onboard.cancel`              | Cancel onboarding       |
+| `onboard.name.open`           | Open name modal         |
+| `onboard.name.submit`         | Name modal submission   |
+| `onboard.profile.select`      | Profile select menu     |
+| `onboard.confirm`             | Confirm final character |
+| `onboard.edit.name`           | Re-edit name            |
+| `onboard.edit.profile`        | Re-edit profile         |
+| `onboard.private-thread.open` | Open private thread     |
 
 ## Validation Recovery
 

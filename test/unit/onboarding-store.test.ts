@@ -20,11 +20,10 @@ describe('InMemoryOnboardingStore', () => {
       expect(session.step).toBe('linked');
       expect(session.draft.profile).toEqual({});
       expect(session.draft.name).toBeUndefined();
-      expect(session.draft.hook).toBeUndefined();
       expect(session.conversationHistory).toEqual([]);
       expect(session.lastComponents).toEqual([]);
       expect(session.retryCounts.name).toBe(0);
-      expect(session.retryCounts.hook).toBe(0);
+      expect(session.retryCounts.profile).toBe(0);
     });
 
     it('returns stored state for the same user', async () => {
@@ -93,20 +92,20 @@ describe('InMemoryOnboardingStore', () => {
       expect(session.step).toBe('character-drafting');
     });
 
-    it('sets pronouns field', async () => {
+    it('sets pronouns in profile', async () => {
       const session = await store.setField('user-1', 'pronouns', 'they/them');
 
-      expect(session.draft.pronouns).toBe('they/them');
+      expect(session.draft.profile.pronouns).toBe('they/them');
     });
 
-    it('sets hook field', async () => {
+    it('sets hook in profile', async () => {
       const session = await store.setField(
         'user-1',
         'hook',
         'A mysterious backstory hook that is long enough.',
       );
 
-      expect(session.draft.hook).toBe('A mysterious backstory hook that is long enough.');
+      expect(session.draft.profile.hook).toBe('A mysterious backstory hook that is long enough.');
     });
 
     it('sets arbitrary profile keys', async () => {
@@ -123,16 +122,14 @@ describe('InMemoryOnboardingStore', () => {
       await store.getOrCreate('user-1');
       await store.mergeDraft('user-1', {
         name: 'Kaelen',
-        pronouns: 'he/him',
-        profile: { archetype: 'scout' },
-        hook: 'Sworn to find the thief.',
+        profile: { archetype: 'scout', pronouns: 'he/him', hook: 'Sworn to find the thief.' },
       });
 
       const session = await store.getOrCreate('user-1');
       expect(session.draft.name).toBe('Kaelen');
-      expect(session.draft.pronouns).toBe('he/him');
       expect(session.draft.profile.archetype).toBe('scout');
-      expect(session.draft.hook).toBe('Sworn to find the thief.');
+      expect(session.draft.profile.pronouns).toBe('he/him');
+      expect(session.draft.profile.hook).toBe('Sworn to find the thief.');
     });
 
     it('ignores unknown keys in merge', async () => {

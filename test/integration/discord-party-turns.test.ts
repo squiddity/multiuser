@@ -10,6 +10,7 @@ import { EventBus, type StatementEvent } from '../../src/core/events.js';
 import {
   continueDiscordPartyTurn,
   DISCORD_DEMO_PARTY_ROOM_ID,
+  ensureDiscordDemoPlayerGrant,
   recordDiscordPartyDialogue,
   resolveDiscordPartyActor,
   submitDiscordPartyTurn,
@@ -78,9 +79,10 @@ describe('integration: Discord party turns', () => {
     await close();
   });
 
-  it('records a party turn, emits events, and ensures the Discord user can read the room', async () => {
+  it('records a party turn for an onboarded player and emits events', async () => {
     const userId = 'discord-party-user-1';
     touchedUserIds.add(userId);
+    await ensureDiscordDemoPlayerGrant(userId);
 
     const events = new EventBus();
     const seenEvents: StatementEvent[] = [];
@@ -130,9 +132,25 @@ describe('integration: Discord party turns', () => {
     expect(grantRows[0]?.roleId).toBe('33333333-3333-3333-3333-333333333333');
   });
 
+  it('rejects a user who has not completed onboarding for the room', async () => {
+    const userId = 'discord-party-user-ungranted';
+    touchedUserIds.add(userId);
+
+    const events = new EventBus();
+
+    await expect(
+      recordDiscordPartyDialogue({
+        userId,
+        text: 'I try to speak before onboarding.',
+        events,
+      }),
+    ).rejects.toThrow('user has not completed onboarding for this room');
+  });
+
   it('supports recording the player echo before narrator completion', async () => {
     const userId = 'discord-party-user-2';
     touchedUserIds.add(userId);
+    await ensureDiscordDemoPlayerGrant(userId);
 
     const events = new EventBus();
     const seenEvents: StatementEvent[] = [];

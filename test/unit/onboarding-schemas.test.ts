@@ -8,24 +8,21 @@ import {
 
 describe('core onboarding schemas', () => {
   describe('CharacterDraft', () => {
-    it('parses a valid complete draft', () => {
+    it('parses a valid complete draft with name and profile', () => {
       const result = CharacterDraft.parse({
         name: 'Kaelen',
-        pronouns: 'he/him',
-        profile: { archetype: 'scout' },
-        hook: 'Sworn to find the thief who stole his heirloom blade.',
+        profile: { archetype: 'scout', pronouns: 'he/him', hook: 'Sworn to find the thief.' },
       });
 
       expect(result.name).toBe('Kaelen');
-      expect(result.pronouns).toBe('he/him');
       expect(result.profile.archetype).toBe('scout');
-      expect(result.hook).toBe('Sworn to find the thief who stole his heirloom blade.');
+      expect(result.profile.pronouns).toBe('he/him');
+      expect(result.profile.hook).toBe('Sworn to find the thief.');
     });
 
     it('rejects a draft missing required name', () => {
       const result = CharacterDraft.safeParse({
         profile: { archetype: 'scout' },
-        hook: 'A hook of sufficient length.',
       });
       expect(result.success).toBe(false);
     });
@@ -34,25 +31,28 @@ describe('core onboarding schemas', () => {
       const result = CharacterDraft.safeParse({
         name: 'A',
         profile: { archetype: 'frontline' },
-        hook: 'A hook of sufficient length.',
       });
       expect(result.success).toBe(false);
     });
 
-    it('rejects a hook that is too short', () => {
+    it('stores hook and pronouns in the flexible profile record', () => {
       const result = CharacterDraft.safeParse({
         name: 'Valid Name',
-        profile: { archetype: 'face' },
-        hook: 'short',
+        profile: {
+          archetype: 'face',
+          hook: 'A sufficiently long hook detail.',
+          pronouns: 'they/them',
+        },
       });
-      expect(result.success).toBe(false);
+      expect(result.success).toBe(true);
+      expect(result.data!.profile.hook).toBe('A sufficiently long hook detail.');
+      expect(result.data!.profile.pronouns).toBe('they/them');
     });
 
     it('allows omitted pronouns', () => {
       const result = CharacterDraft.safeParse({
         name: 'Valid Name',
         profile: { archetype: 'scout' },
-        hook: 'A hook of sufficient length.',
       });
       expect(result.success).toBe(true);
     });
@@ -61,7 +61,6 @@ describe('core onboarding schemas', () => {
       const result = CharacterDraft.safeParse({
         name: 'Valid Name',
         profile: {},
-        hook: 'A hook of sufficient length.',
       });
       expect(result.success).toBe(false);
     });
@@ -70,7 +69,6 @@ describe('core onboarding schemas', () => {
       const result = CharacterDraft.safeParse({
         name: 'Valid Name',
         profile: { archetype: 'scout', subclass: 'shadow' },
-        hook: 'A hook of sufficient length.',
       });
       expect(result.success).toBe(true);
       if (result.success) {

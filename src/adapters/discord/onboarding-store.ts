@@ -23,15 +23,11 @@ interface StoredOnboardingState {
   step: OnboardingStep;
   draft: {
     name?: string;
-    pronouns?: string;
     profile: Record<string, string>;
-    hook?: string;
   };
   retryCounts: {
     name: number;
-    pronouns: number;
     profile: number;
-    hook: number;
   };
   conversationHistory: string[];
   lastComponents: ComponentSpec[];
@@ -75,7 +71,7 @@ function createInitialState(): StoredOnboardingState {
   return {
     step: 'linked',
     draft: { profile: {} },
-    retryCounts: { name: 0, pronouns: 0, profile: 0, hook: 0 },
+    retryCounts: { name: 0, profile: 0 },
     conversationHistory: [],
     lastComponents: [],
   };
@@ -98,9 +94,7 @@ function asRetryCounts(value: unknown): StoredOnboardingState['retryCounts'] {
   const source = isRecord(value) ? value : {};
   return {
     name: typeof source.name === 'number' ? source.name : 0,
-    pronouns: typeof source.pronouns === 'number' ? source.pronouns : 0,
     profile: typeof source.profile === 'number' ? source.profile : 0,
-    hook: typeof source.hook === 'number' ? source.hook : 0,
   };
 }
 
@@ -117,9 +111,7 @@ function deserializeStoredState(value: unknown): StoredOnboardingState | undefin
     step: typeof value.step === 'string' ? (value.step as OnboardingStep) : 'linked',
     draft: {
       name: typeof draftSource.name === 'string' ? draftSource.name : undefined,
-      pronouns: typeof draftSource.pronouns === 'string' ? draftSource.pronouns : undefined,
       profile: asStringRecord(draftSource.profile),
-      hook: typeof draftSource.hook === 'string' ? draftSource.hook : undefined,
     },
     retryCounts: asRetryCounts(value.retryCounts),
     conversationHistory: Array.isArray(value.conversationHistory)
@@ -139,9 +131,7 @@ function toSessionState(
     step: snapshot.state.step,
     draft: {
       name: snapshot.state.draft.name,
-      pronouns: snapshot.state.draft.pronouns,
       profile: { ...snapshot.state.draft.profile },
-      hook: snapshot.state.draft.hook,
     },
     retryCounts: { ...snapshot.state.retryCounts },
     conversationHistory: [...snapshot.state.conversationHistory],
@@ -207,19 +197,10 @@ abstract class BaseOnboardingStore implements OnboardingStore {
       content: describeEvent('field-set', `Onboarding field updated: ${field}.`),
       metadata: { field },
       mutate: (state) => {
-        switch (field) {
-          case 'name':
-            state.draft.name = value;
-            break;
-          case 'pronouns':
-            state.draft.pronouns = value;
-            break;
-          case 'hook':
-            state.draft.hook = value;
-            break;
-          default:
-            state.draft.profile[field] = value;
-            break;
+        if (field === 'name') {
+          state.draft.name = value;
+        } else {
+          state.draft.profile[field] = value;
         }
         state.step = 'character-drafting';
       },
@@ -236,11 +217,9 @@ abstract class BaseOnboardingStore implements OnboardingStore {
       content: describeEvent('draft-merged'),
       mutate: (state) => {
         if (typeof draft.name === 'string') state.draft.name = draft.name;
-        if (typeof draft.pronouns === 'string') state.draft.pronouns = draft.pronouns;
         if (draft.profile && typeof draft.profile === 'object') {
           state.draft.profile = draft.profile as Record<string, string>;
         }
-        if (typeof draft.hook === 'string') state.draft.hook = draft.hook;
       },
     });
     return toSessionState(userId, snapshot);

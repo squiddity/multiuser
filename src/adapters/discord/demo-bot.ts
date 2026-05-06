@@ -17,7 +17,7 @@ import {
   type StringSelectMenuInteraction,
 } from 'discord.js';
 import type { Logger } from 'pino';
-import { normalizeOnboardingInput, type CharacterDraft } from '../../core/onboarding.js';
+import { normalizeOnboardingInput } from '../../core/onboarding.js';
 import { StatementBackedOnboardingStore, type OnboardingStore } from './onboarding-store.js';
 import { createOnboardingAgent, type OnboardingAgent } from '../../agents/onboarding-agent.js';
 import {
@@ -32,9 +32,16 @@ import { env } from '../../config/env.js';
 import type { EventBus } from '../../core/events.js';
 import {
   continueDiscordPartyTurn,
+  ensureDiscordDemoPlayerGrant,
   recordDiscordPartyDialogue,
   resolveDiscordPartyActor,
 } from './party-turns.js';
+import {
+  completeDiscordDemoOnboarding,
+  ensureDiscordDemoGuildProjection,
+  ensureDiscordUserLink,
+  resolveDiscordDemoPlayerDefinition,
+} from './demo-state.js';
 
 const DEFAULT_MODEL = 'openrouter:deepseek/deepseek-v4-flash';
 
@@ -101,13 +108,9 @@ function describeButtonClick(customId: string): string {
     'onboard.continue': 'User clicked Continue.',
     'onboard.cancel': 'User cancelled onboarding.',
     'onboard.name.open': 'User wants to set their character name.',
-    'onboard.pronouns.open': 'User wants to set pronouns.',
-    'onboard.hook.open': 'User wants to set their backstory hook.',
     'onboard.private-thread.open': 'User requested a private thread.',
     'onboard.edit.name': 'User wants to edit their character name.',
-    'onboard.edit.pronouns': 'User wants to edit their pronouns.',
-    'onboard.edit.profile': 'User wants to edit their archetype.',
-    'onboard.edit.hook': 'User wants to edit their backstory hook.',
+    'onboard.edit.profile': 'User wants to edit their profile.',
     'onboard.confirm': 'User confirmed the final character.',
   };
   return labels[customId] ?? `User clicked button: ${customId}.`;
@@ -115,15 +118,11 @@ function describeButtonClick(customId: string): string {
 
 function getDraftForAgent(draft: {
   name?: string;
-  pronouns?: string;
   profile: Record<string, string>;
-  hook?: string;
 }): Record<string, unknown> {
   return {
     name: draft.name,
-    pronouns: draft.pronouns,
-    profile: draft.profile ?? {},
-    hook: draft.hook,
+    profile: { ...(draft.profile ?? {}) },
   };
 }
 
@@ -154,9 +153,24 @@ export async function startDiscordDemoBot({
     modelSpec: env.DEFAULT_MODEL_SPEC || DEFAULT_MODEL,
   });
 
+  client.on('error', (err) => {
+    logger.warn({ err }, 'discord client error (recoverable)');
+  });
+
   client.on('clientReady', async () => {
     logger.info({ bot: client.user?.tag }, 'discord demo bot ready');
     await registerCommands(client, guildId, logger);
+
+    const projectionGuild = guildId
+      ? await client.guilds.fetch(guildId).catch(() => null)
+      : (client.guilds.cache.first() ?? null);
+    if (projectionGuild) {
+      const projection = await ensureDiscordDemoGuildProjection(projectionGuild);
+      logger.info(
+        { guildId: projectionGuild.id, projection },
+        'discord demo guild projection ready',
+      );
+    }
   });
 
   client.on('interactionCreate', async (interaction: Interaction) => {
@@ -167,14 +181,47 @@ export async function startDiscordDemoBot({
       }
 
       if (interaction.isChatInputCommand() && interaction.commandName === 'start-onboarding') {
+        if (!interaction.guild) {
+          await interaction.reply({
+            flags: MessageFlags.Ephemeral,
+            content: 'Onboarding is only available inside the Discord server.',
+          });
+          return;
+        }
+
+        const projection = await ensureDiscordDemoGuildProjection(interaction.guild);
+
+        if (interaction.channelId !== projection.onboardingChannelId) {
+          await interaction.reply({
+            flags: MessageFlags.Ephemeral,
+            content: `Please use /start-onboarding in <#${projection.onboardingChannelId}>. Click to jump there.`,
+          });
+          return;
+        }
+
+        await interaction.deferReply({ flags: MessageFlags.Ephemeral });
+
+        const displayName =
+          interaction.member && 'displayName' in interaction.member
+            ? interaction.member.displayName
+            : interaction.user.displayName;
+
+        await ensureDiscordUserLink({
+          discordUserId: interaction.user.id,
+          discordDisplayName: displayName,
+          guildId: interaction.guildId,
+        });
         await store.getOrCreate(interaction.user.id);
 
         const output = await agent.start(interaction.user.id);
+        await store.addHistory(
+          interaction.user.id,
+          'System: Discord account linked automatically.',
+        );
         await store.addHistory(interaction.user.id, `Agent: ${output.message}`);
         await store.setLastComponents(interaction.user.id, output.components);
 
-        await interaction.reply({
-          flags: MessageFlags.Ephemeral,
+        await interaction.editReply({
           content: `${output.message}\n${output.progress}`,
           components: renderAgentComponents(output.components),
         });
@@ -198,11 +245,41 @@ export async function startDiscordDemoBot({
           return;
         }
 
-        const actor = resolveDiscordPartyActor({
+        let actor = resolveDiscordPartyActor({
           discordUserId: interaction.user.id,
           discordDisplayName: displayName,
           actorKey,
         });
+        let characterId: string | null = null;
+
+        if (!actorKey) {
+          const player = await resolveDiscordDemoPlayerDefinition({
+            discordUserId: interaction.user.id,
+          });
+          if (!player) {
+            await interaction.reply({
+              flags: MessageFlags.Ephemeral,
+              content:
+                'You have not finished onboarding yet. Use /start-onboarding before speaking in the party room.',
+            });
+            return;
+          }
+          if (interaction.channelId !== player.channelId) {
+            await interaction.reply({
+              flags: MessageFlags.Ephemeral,
+              content: `Your character is assigned to <#${player.channelId}>. Please use /say there.`,
+            });
+            return;
+          }
+
+          actor = {
+            userId: player.userId,
+            displayName: player.characterName,
+          };
+          characterId = player.characterId;
+        } else {
+          await ensureDiscordDemoPlayerGrant(actor.userId);
+        }
 
         await interaction.deferReply();
 
@@ -219,10 +296,17 @@ export async function startDiscordDemoBot({
             actingDisplayName: actor.displayName,
             actingUserOverride: actor.actorKey ?? null,
             overriddenByDiscordUserId: actor.overriddenByUserId ?? null,
+            asCharacter: characterId,
+            characterName: characterId ? actor.displayName : null,
           },
         });
 
         await interaction.editReply(`**${actor.displayName}:** ${text}`);
+
+        // Send a visible "Thinking..." follow-up while narrator works
+        const thinkingMsg = await interaction.followUp({
+          content: '_Thinking..._',
+        });
 
         const stopTyping = await startTypingIndicator(interaction, logger);
         try {
@@ -235,7 +319,11 @@ export async function startDiscordDemoBot({
             logger,
           });
 
-          await interaction.followUp({ content: result.output.content });
+          // Replace "Thinking..." with actual narration
+          await thinkingMsg.edit(result.output.content);
+        } catch (narrateErr) {
+          await thinkingMsg.edit('_The narrator seems distracted. Try again._');
+          throw narrateErr;
         } finally {
           stopTyping?.();
         }
@@ -261,10 +349,14 @@ export async function startDiscordDemoBot({
         'discord interaction failed',
       );
       if (interaction.isRepliable() && !interaction.replied && !interaction.deferred) {
-        await interaction.reply({
-          flags: MessageFlags.Ephemeral,
-          content: 'Something went wrong while handling onboarding.',
-        });
+        try {
+          await interaction.reply({
+            flags: MessageFlags.Ephemeral,
+            content: 'Something went wrong while handling onboarding.',
+          });
+        } catch (replyErr) {
+          logger.warn({ err: replyErr }, 'discord error reply also failed (token likely expired)');
+        }
       }
     }
   });
@@ -316,27 +408,68 @@ async function handleAgenticButton({
   if (interaction.customId === 'onboard.confirm') {
     const validation = validateCharacterDraft(getDraftForAgent(session.draft));
     if (validation.valid) {
+      await interaction.update({
+        content: '_Registering your character..._',
+        components: [],
+      });
+
+      if (!interaction.guild) {
+        await interaction.editReply({
+          content: 'Onboarding completion requires a server context.',
+          components: [],
+        });
+        return;
+      }
+
       await store.mergeDraft(
         interaction.user.id,
         validation.draft as unknown as Record<string, unknown>,
       );
+
+      const displayName =
+        interaction.member && 'displayName' in interaction.member
+          ? interaction.member.displayName
+          : interaction.user.displayName;
+      let player;
+      try {
+        player = await completeDiscordDemoOnboarding({
+          guild: interaction.guild,
+          discordUserId: interaction.user.id,
+          discordDisplayName: displayName,
+          sessionId: session.sessionId,
+          draft: validation.draft,
+        });
+      } catch (onboardErr) {
+        logger.error({ err: onboardErr }, 'onboarding completion failed');
+        await interaction.editReply({
+          content:
+            'Something went wrong while completing registration. An operator has been notified.',
+          components: [],
+        });
+        return;
+      }
       await store.confirm(interaction.user.id);
 
-      await interaction.update({
+      await interaction.editReply({
         content: [
           `✅ **Onboarding complete!**`,
           '',
-          `Welcome, **${validation.draft.name}**. You are ready to begin your adventure.`,
+          `Welcome, **${player.characterName}**. You can now use /say in <#${player.channelId}>.`,
         ].join('\n'),
         components: [],
       });
 
       logger.info(
-        { userId: interaction.user.id, draft: validation.draft },
+        { userId: interaction.user.id, characterId: player.characterId, draft: validation.draft },
         'agentic onboarding completed',
       );
       return;
     }
+
+    await interaction.update({
+      content: '_Thinking..._',
+      components: [],
+    });
 
     // Validation failed — feed errors back to agent
     const errors = formatValidationErrors(validation);
@@ -352,7 +485,7 @@ async function handleAgenticButton({
     await store.addHistory(interaction.user.id, `Agent: ${output.message}`);
     await store.setLastComponents(interaction.user.id, output.components);
 
-    await interaction.update({
+    await interaction.editReply({
       content: `${output.message}\n${output.progress}`,
       components: renderAgentComponents(output.components),
     });
@@ -388,7 +521,12 @@ async function handleAgenticButton({
     return;
   }
 
-  // General button: serialize, send to agent
+  // Show immediate visual feedback: replace buttons with "Thinking..."
+  await interaction.update({
+    content: '_Thinking..._',
+    components: [],
+  });
+
   const actionDesc = describeButtonClick(interaction.customId);
   await store.addHistory(interaction.user.id, `User: ${actionDesc}`);
 
@@ -401,7 +539,7 @@ async function handleAgenticButton({
   await store.addHistory(interaction.user.id, `Agent: ${output.message}`);
   await store.setLastComponents(interaction.user.id, output.components);
 
-  await interaction.update({
+  await interaction.editReply({
     content: `${output.message}\n${output.progress}`,
     components: renderAgentComponents(output.components),
   });
@@ -418,14 +556,16 @@ async function handleAgenticSelect({
   agent: OnboardingAgent;
   logger: Logger;
 }): Promise<void> {
+  await interaction.update({
+    content: '_Thinking..._',
+    components: [],
+  });
+
   let session = await store.getOrCreate(interaction.user.id);
   const selected = interaction.values[0];
 
   if (!selected) {
-    await interaction.reply({
-      flags: MessageFlags.Ephemeral,
-      content: 'No option selected.',
-    });
+    await interaction.editReply({ content: 'No option selected.', components: [] });
     return;
   }
 
@@ -443,7 +583,7 @@ async function handleAgenticSelect({
   await store.addHistory(interaction.user.id, `Agent: ${output.message}`);
   await store.setLastComponents(interaction.user.id, output.components);
 
-  await interaction.update({
+  await interaction.editReply({
     content: `${output.message}\n${output.progress}`,
     components: renderAgentComponents(output.components),
   });
@@ -471,26 +611,26 @@ async function handleAgenticModal({
     return;
   }
 
-  // Collect field values
-  const fieldValues: Record<string, string> = {};
+  await interaction.deferReply({ flags: MessageFlags.Ephemeral });
+
+  // Collect field values and apply to session
+  // Name is the only hardcoded field; everything else is stored in profile
+  // using the field's customId as the profile key
+  let actionDesc = '';
   for (const field of modalSpec.fields) {
     const value = normalizeOnboardingInput(interaction.fields.getTextInputValue(field.customId));
-    fieldValues[field.customId] = value;
+    if (!value) continue;
+
+    if (field.customId === 'name') {
+      session = await store.setField(interaction.user.id, 'name', value);
+      actionDesc = `User set character name to "${value}".`;
+    } else {
+      session = await store.setField(interaction.user.id, field.customId, value);
+      actionDesc = `User set ${field.customId} to "${value}".`;
+    }
   }
 
-  // Apply to session based on the fields present
-  let actionDesc = '';
-  if (fieldValues.name !== undefined) {
-    session = await store.setField(interaction.user.id, 'name', fieldValues.name);
-    actionDesc = `User set character name to "${fieldValues.name}".`;
-  } else if (fieldValues.pronouns !== undefined) {
-    const pronouns = fieldValues.pronouns.length > 0 ? fieldValues.pronouns : undefined;
-    session = await store.setField(interaction.user.id, 'pronouns', pronouns ?? '');
-    actionDesc = pronouns ? `User set pronouns to "${pronouns}".` : 'User skipped pronouns.';
-  } else if (fieldValues.hook !== undefined) {
-    session = await store.setField(interaction.user.id, 'hook', fieldValues.hook);
-    actionDesc = `User set backstory hook to "${fieldValues.hook}".`;
-  } else {
+  if (!actionDesc) {
     actionDesc = 'User submitted a modal.';
   }
 
@@ -505,8 +645,7 @@ async function handleAgenticModal({
   await store.addHistory(interaction.user.id, `Agent: ${output.message}`);
   await store.setLastComponents(interaction.user.id, output.components);
 
-  await interaction.reply({
-    flags: MessageFlags.Ephemeral,
+  await interaction.editReply({
     content: `${output.message}\n${output.progress}`,
     components: renderAgentComponents(output.components),
   });

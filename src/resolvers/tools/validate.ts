@@ -21,7 +21,7 @@ export type ValidationResult = ValidationSuccess | ValidationError;
 
 /**
  * Validate a character draft against the TypeBox CharacterDraft schema.
- * Returns structured errors per field for conversational recovery.
+ * Only `name` is hardcoded; all other fields live in the flexible `profile` record.
  */
 export function validateCharacterDraft(draft: unknown): ValidationResult {
   const parsed = CharacterDraft.safeParse(draft);
@@ -30,10 +30,7 @@ export function validateCharacterDraft(draft: unknown): ValidationResult {
     return { valid: true, draft: parsed.data };
   }
 
-  // Convert TypeBox errors to per-field structured errors
   const errors: FieldError[] = [];
-
-  // Parse the error message for field-level issues
   const errorText = parsed.error.message;
 
   if (!draft || typeof draft !== 'object') {
@@ -45,7 +42,7 @@ export function validateCharacterDraft(draft: unknown): ValidationResult {
 
   const d = draft as Record<string, unknown>;
 
-  // Check each required field
+  // Name is the only hardcoded required field
   if (!d.name || typeof d.name !== 'string' || d.name.trim().length < 2) {
     errors.push({
       field: 'name',
@@ -58,21 +55,7 @@ export function validateCharacterDraft(draft: unknown): ValidationResult {
     });
   }
 
-  // pronouns is optional — only flag if present but invalid
-  if (d.pronouns !== undefined && d.pronouns !== null) {
-    if (typeof d.pronouns !== 'string') {
-      errors.push({
-        field: 'pronouns',
-        message: 'Pronouns must be a short text value.',
-      });
-    } else if (d.pronouns.length > 60) {
-      errors.push({
-        field: 'pronouns',
-        message: 'Pronouns must be 60 characters or fewer.',
-      });
-    }
-  }
-
+  // Profile must be present with at least one entry
   if (
     !d.profile ||
     typeof d.profile !== 'object' ||
@@ -80,19 +63,7 @@ export function validateCharacterDraft(draft: unknown): ValidationResult {
   ) {
     errors.push({
       field: 'profile',
-      message: 'An archetype must be selected.',
-    });
-  }
-
-  if (!d.hook || typeof d.hook !== 'string' || d.hook.trim().length < 10) {
-    errors.push({
-      field: 'hook',
-      message: 'Backstory hook is required (10–280 characters).',
-    });
-  } else if (d.hook.trim().length > 280) {
-    errors.push({
-      field: 'hook',
-      message: 'Backstory hook must be 280 characters or fewer.',
+      message: 'At least one profile field must be set.',
     });
   }
 

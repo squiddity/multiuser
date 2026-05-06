@@ -5,12 +5,10 @@ import {
 } from '../../src/resolvers/tools/validate.js';
 
 describe('validateCharacterDraft', () => {
-  it('accepts a complete valid draft', () => {
+  it('accepts a complete valid draft with name and profile', () => {
     const result = validateCharacterDraft({
       name: 'Kaelen',
-      pronouns: 'he/him',
-      profile: { archetype: 'scout' },
-      hook: 'Sworn to find the thief who stole his heirloom blade.',
+      profile: { archetype: 'scout', pronouns: 'he/him', hook: 'Sworn to find the thief.' },
     });
 
     expect(result.valid).toBe(true);
@@ -19,11 +17,10 @@ describe('validateCharacterDraft', () => {
     }
   });
 
-  it('accepts a draft with omitted pronouns', () => {
+  it('accepts a draft with profile-only fields and no pronouns', () => {
     const result = validateCharacterDraft({
       name: 'Kaelen',
       profile: { archetype: 'frontline' },
-      hook: 'A backstory hook with enough length for the test.',
     });
 
     expect(result.valid).toBe(true);
@@ -32,7 +29,6 @@ describe('validateCharacterDraft', () => {
   it('rejects a missing name', () => {
     const result = validateCharacterDraft({
       profile: { archetype: 'scout' },
-      hook: 'A hook of sufficient length for testing validation.',
     });
 
     expect(result.valid).toBe(false);
@@ -45,7 +41,6 @@ describe('validateCharacterDraft', () => {
     const result = validateCharacterDraft({
       name: 'A',
       profile: { archetype: 'scout' },
-      hook: 'A hook of sufficient length for testing.',
     });
 
     expect(result.valid).toBe(false);
@@ -55,45 +50,16 @@ describe('validateCharacterDraft', () => {
     }
   });
 
-  it('rejects a missing archetype (empty profile)', () => {
+  it('rejects an empty profile record', () => {
     const result = validateCharacterDraft({
       name: 'Valid Name',
       profile: {},
-      hook: 'A hook of sufficient length for testing.',
     });
 
     expect(result.valid).toBe(false);
     if (!result.valid) {
       const profileError = result.errors.find((e) => e.field === 'profile');
       expect(profileError).toBeDefined();
-    }
-  });
-
-  it('rejects a missing hook', () => {
-    const result = validateCharacterDraft({
-      name: 'Valid Name',
-      profile: { archetype: 'scout' },
-    });
-
-    expect(result.valid).toBe(false);
-    if (!result.valid) {
-      const hookError = result.errors.find((e) => e.field === 'hook');
-      expect(hookError).toBeDefined();
-    }
-  });
-
-  it('rejects a hook that is too short', () => {
-    const result = validateCharacterDraft({
-      name: 'Valid Name',
-      profile: { archetype: 'scout' },
-      hook: 'short',
-    });
-
-    expect(result.valid).toBe(false);
-    if (!result.valid) {
-      const hookError = result.errors.find((e) => e.field === 'hook');
-      expect(hookError).toBeDefined();
-      expect(hookError!.message).toContain('10');
     }
   });
 
@@ -105,27 +71,10 @@ describe('validateCharacterDraft', () => {
     expect(result2.valid).toBe(false);
   });
 
-  it('rejects pronouns that are too long', () => {
+  it('accepts a draft where hook and pronouns are in profile (agent-defined)', () => {
     const result = validateCharacterDraft({
       name: 'Valid',
-      pronouns: 'a'.repeat(61),
-      profile: { archetype: 'scout' },
-      hook: 'A hook of sufficient length for the test.',
-    });
-
-    expect(result.valid).toBe(false);
-    if (!result.valid) {
-      const pronounsError = result.errors.find((e) => e.field === 'pronouns');
-      expect(pronounsError).toBeDefined();
-    }
-  });
-
-  it('accepts pronouns that are exactly within limit', () => {
-    const result = validateCharacterDraft({
-      name: 'Valid',
-      pronouns: 'a'.repeat(60),
-      profile: { archetype: 'scout' },
-      hook: 'A hook of sufficient length for the test.',
+      profile: { archetype: 'scout', pronouns: 'they/them', hook: 'A sufficiently long goal.' },
     });
     expect(result.valid).toBe(true);
   });
@@ -134,7 +83,6 @@ describe('validateCharacterDraft', () => {
     const result = validateCharacterDraft({
       name: 'X',
       profile: {},
-      hook: 's',
     });
 
     expect(result.valid).toBe(false);
@@ -142,7 +90,6 @@ describe('validateCharacterDraft', () => {
       const fields = result.errors.map((e) => e.field);
       expect(fields).toContain('name');
       expect(fields).toContain('profile');
-      expect(fields).toContain('hook');
     }
   });
 });
@@ -152,7 +99,6 @@ describe('formatValidationErrors', () => {
     const result = validateCharacterDraft({
       name: 'X',
       profile: { archetype: 'frontline' },
-      hook: 'A valid hook that is long enough for the test.',
     });
 
     expect(result.valid).toBe(false);
@@ -167,7 +113,6 @@ describe('formatValidationErrors', () => {
     const result = validateCharacterDraft({
       name: 'X',
       profile: {},
-      hook: 's',
     });
 
     expect(result.valid).toBe(false);

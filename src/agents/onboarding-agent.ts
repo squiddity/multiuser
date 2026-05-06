@@ -98,7 +98,32 @@ export class OnboardingAgent {
         'onboarding-agent: llm output received',
       );
 
-      return this.parseOutput(result.text);
+      const parsed = this.parseOutput(result.text);
+
+      // One automatic retry on empty output (provider flakiness)
+      if (parsed.message === EMPTY_OUTPUT_FALLBACK && result.text.length === 0) {
+        logger.warn('onboarding-agent: empty response, retrying once');
+        const retryRequestId = randomUUID();
+        const retryResult = await this.llmRuntime.generate({
+          modelSpec: this.config.modelSpec,
+          systemPrompt: prompt.content,
+          prompt: userPrompt,
+          metadata: {
+            requestId: retryRequestId,
+            caller: 'onboarding-agent.turn.retry',
+          },
+        });
+        logger.info(
+          {
+            responseChars: retryResult.text.length,
+            retryRequestId,
+          },
+          'onboarding-agent: retry output received',
+        );
+        return this.parseOutput(retryResult.text);
+      }
+
+      return parsed;
     } catch (err) {
       logger.error({ err }, 'onboarding-agent: turn failed');
       return {
@@ -125,21 +150,18 @@ export class OnboardingAgent {
 
     prompt += '## Current Draft State\n';
     if (input.draft.name) prompt += `- name: "${input.draft.name}"\n`;
-    if (input.draft.pronouns !== undefined) prompt += `- pronouns: "${input.draft.pronouns}"\n`;
     if (
       input.draft.profile &&
       typeof input.draft.profile === 'object' &&
       Object.keys(input.draft.profile as object).length > 0
     ) {
-      prompt += `- profile: ${JSON.stringify(input.draft.profile)}\n`;
+      const profile = input.draft.profile as Record<string, string>;
+      for (const [key, val] of Object.entries(profile)) {
+        prompt += `- ${key}: "${val}"\n`;
+      }
     }
-    if (input.draft.hook) prompt += `- hook: "${input.draft.hook}"\n`;
 
-    if (
-      !input.draft.name &&
-      !input.draft.hook &&
-      Object.keys(input.draft.profile ?? {}).length === 0
-    ) {
+    if (!input.draft.name && Object.keys(input.draft.profile ?? {}).length === 0) {
       prompt += '(no fields filled yet)\n';
     }
 
@@ -148,7 +170,7 @@ export class OnboardingAgent {
     prompt += input.actionDescription;
     prompt += '\n\n';
     prompt +=
-      'Respond with JSON. If all required fields (name, archetype, hook) are filled, set complete: true and include the full draft. Otherwise, continue collecting with components.';
+      'Respond with JSON. If all required fields are filled, set complete: true and include the full draft with profile. Otherwise, continue collecting with components.';
 
     return prompt;
   }

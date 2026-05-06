@@ -43,8 +43,11 @@ Startup log should include:
 1. In test guild, run `/ping` → expect `pong` (ephemeral).
 2. Run `/start-onboarding`.
 3. Walk through onboarding fields and confirmation.
-4. Run `/say text:<something in-character>` in a shared test channel.
-5. Expect a visible player-action echo followed by narrator output in-channel.
+4. Confirm the bot created or reused the demo channels (`onboarding-intake`, `party-1`, `gm-briefings`).
+5. After onboarding completion, switch to the assigned `party-1` channel.
+6. Run `/say text:<something in-character>` there.
+7. Expect a visible character-action echo followed by narrator output in-channel.
+8. If you try `/say` before onboarding or in the wrong channel, expect an ephemeral refusal.
 
 ## Lifecycle commands
 
@@ -57,6 +60,7 @@ Startup log should include:
 Watch console logs in the running terminal for:
 
 - bot startup
+- guild projection readiness (room↔channel mappings)
 - interaction errors
 - onboarding completion log with user id + draft summary
 - `discord party turn submitted` entries for `/say` narration turns
@@ -66,8 +70,12 @@ Watch console logs in the running terminal for:
 The bot currently provides:
 
 - `/ping`
-- `/start-onboarding` with ephemeral-first flow
+- `/start-onboarding` with ephemeral-first flow and automatic Discord-account linking
+- startup room/channel projection for the demo guild (`onboarding-intake`, `party-1`, `gm-briefings`)
+- onboarding completion that creates a durable player definition (`userId` + `characterId` + mapped room/channel), grants party access, and posts a first-turn handoff in the destination channel
 - `/say` for the shared party narration loop
+  - rejects users who have not completed onboarding
+  - rejects users who invoke it outside their mapped party channel
   - responds in two phases: quick visible player echo first, narrator follow-up second
   - keeps Discord's typing indicator active while the narrator call is in flight
   - supports an admin-only demo override (`user=Player A|Player B`) for validation with synthetic actors

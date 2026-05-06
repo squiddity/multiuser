@@ -9,28 +9,17 @@ const OnboardingActionKeySchema = Type.Union([
   Type.Literal('onboard.cancel'),
   Type.Literal('onboard.name.open'),
   Type.Literal('onboard.name.submit'),
-  Type.Literal('onboard.pronouns.open'),
-  Type.Literal('onboard.pronouns.submit'),
   Type.Literal('onboard.profile.select'),
-  Type.Literal('onboard.hook.open'),
-  Type.Literal('onboard.hook.submit'),
   Type.Literal('onboard.review.open'),
   Type.Literal('onboard.confirm'),
   Type.Literal('onboard.edit.name'),
-  Type.Literal('onboard.edit.pronouns'),
   Type.Literal('onboard.edit.profile'),
-  Type.Literal('onboard.edit.hook'),
   Type.Literal('onboard.private-thread.open'),
 ]);
 export const OnboardingActionKey = withValidation(OnboardingActionKeySchema);
 export type OnboardingActionKey = Static<typeof OnboardingActionKeySchema>;
 
-const OnboardingFieldKeySchema = Type.Union([
-  Type.Literal('name'),
-  Type.Literal('pronouns'),
-  Type.Literal('profile'),
-  Type.Literal('hook'),
-]);
+const OnboardingFieldKeySchema = Type.Union([Type.Literal('name'), Type.Literal('profile')]);
 export const OnboardingFieldKey = withValidation(OnboardingFieldKeySchema);
 export type OnboardingFieldKey = Static<typeof OnboardingFieldKeySchema>;
 
@@ -57,9 +46,7 @@ export type RoutingDecisionSource = Static<typeof RoutingDecisionSourceSchema>;
 
 const CharacterDraftSchema = Type.Object({
   name: Type.String({ minLength: 2, maxLength: 40 }),
-  pronouns: Type.Optional(Type.String({ minLength: 0, maxLength: 60 })),
   profile: Type.Record(NonEmptyString, NonEmptyString, { minProperties: 1 }),
-  hook: Type.String({ minLength: 10, maxLength: 280 }),
 });
 export const CharacterDraft = withValidation(CharacterDraftSchema);
 export type CharacterDraft = Static<typeof CharacterDraftSchema>;
@@ -79,9 +66,7 @@ export type OnboardingInteractionRecord = Static<typeof OnboardingInteractionRec
 
 const RetryCountsSchema = Type.Object({
   name: Type.Integer({ minimum: 0 }),
-  pronouns: Type.Integer({ minimum: 0 }),
   profile: Type.Integer({ minimum: 0 }),
-  hook: Type.Integer({ minimum: 0 }),
 });
 
 const OnboardingSessionStateSchema = Type.Object({

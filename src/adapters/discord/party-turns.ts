@@ -93,6 +93,17 @@ export async function ensureDiscordDemoPlayerGrant(
   });
 }
 
+export async function assertDiscordDemoPlayerGrant(
+  userId: string,
+  partyRoomId = DISCORD_DEMO_PARTY_ROOM_ID,
+): Promise<void> {
+  const grants = await getActiveGrantsForUserRoom(userId, partyRoomId);
+  const alreadyGranted = grants.some((grant) => grant.roleId === DISCORD_DEMO_PLAYER_ROLE_ID);
+  if (alreadyGranted) return;
+
+  throw new Error('user has not completed onboarding for this room');
+}
+
 export function resolveDiscordPartyActor(input: {
   discordUserId: string;
   discordDisplayName: string;
@@ -138,7 +149,7 @@ export async function recordDiscordPartyDialogue({
     throw new Error('party turn text must not be empty');
   }
 
-  await ensureDiscordDemoPlayerGrant(userId, partyRoomId);
+  await assertDiscordDemoPlayerGrant(userId, partyRoomId);
 
   return appendIndexAndEmit(
     {

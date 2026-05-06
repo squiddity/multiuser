@@ -154,8 +154,7 @@ describe('OnboardingAgent', () => {
       await agent.turn({
         draft: {
           name: 'Kaelen',
-          pronouns: 'he/him',
-          profile: { archetype: 'scout' },
+          profile: { archetype: 'scout', pronouns: 'he/him' },
         },
         actionDescription: 'User selected archetype.',
         conversationHistory: '',
@@ -163,7 +162,7 @@ describe('OnboardingAgent', () => {
 
       const callArgs = mockLlmGenerate.mock.calls[0]![0] as { prompt: string };
       expect(callArgs.prompt).toContain('"Kaelen"');
-      expect(callArgs.prompt).toContain('"he/him"');
+      expect(callArgs.prompt).toContain('he/him');
       expect(callArgs.prompt).toContain('archetype');
     });
 

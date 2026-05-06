@@ -116,15 +116,34 @@ The demo bot's hardcoded state machine has been replaced with the agentic patter
 
 - ✅ Added `/say` to the Discord demo bot as the first shared-channel party narration input.
 - ✅ `/say` now:
-  - ensures the Discord user has the demo player grant for the seeded party room,
+  - rejects Discord users who have not completed onboarding for the demo party room,
+  - resolves the acting player from the onboarding-created player definition instead of treating the raw Discord account as the in-world actor,
+  - enforces the mapped destination channel for that player before accepting the turn,
   - appends a `dialogue` statement in party scope,
   - shows the visible player/action echo before waiting for narrator completion,
   - invokes the existing `Narrator` path directly for Discord turns,
   - emits follow-on statement events for narrator output so downstream workers can react.
-- ✅ Added an admin-only demo actor override on `/say` (`user=Player A|Player B`) so a single operator can exercise multi-actor validation flows without needing multiple live Discord accounts. The override is explicitly for validation/demo use, not the intended player privilege model.
+- ✅ Added an admin-only demo actor override on `/say` (`user=Player A|Player B`) so a single operator can still exercise multi-actor validation flows without multiple live Discord accounts. The override is explicitly for validation/demo use, not the intended player privilege model.
 - ✅ Added `src/adapters/discord/party-turns.ts` as the thin Discord-side party-turn service.
 - ✅ Registered `briefing-generator` in the main service lifecycle and disabled duplicate `live-responder` scheduling when the Discord adapter is active, so Discord-driven turns can produce briefings without duplicate narrator responses.
-- ✅ Added integration coverage in `test/integration/discord-party-turns.test.ts` for statement writes, event emission, and automatic grant creation.
+- ✅ Added integration coverage in `test/integration/discord-party-turns.test.ts` for statement writes, event emission, and onboarding-gated access.
+
+### Onboarding-backed player definition and room projection (2026-05-06)
+
+- ✅ Discord startup now ensures a minimal demo projection in the target guild:
+  - `onboarding-intake`
+  - `party-1`
+  - `gm-briefings`
+- ✅ Room↔channel projection is now persisted through append-only `mappings` rows plus `kind=mapping` audit statements.
+- ✅ `/start-onboarding` now auto-links the Discord account on entry and records the link through the mapping layer before the conversational flow continues.
+- ✅ On onboarding confirmation, the bot now:
+  - creates a durable player definition tying `userId`, `userAccountId`, `characterId`, and destination room/channel together,
+  - emits a `character-definition` governance record in character scope,
+  - grants the seeded player role for the party room,
+  - applies Discord channel access for the assigned player,
+  - writes a session-scope routing/completion governance record,
+  - posts a first-turn handoff message in the destination party channel.
+- ✅ Added integration coverage in `test/integration/discord-demo-state.test.ts` for link creation, player definition persistence, room grant creation, and routing records.
 
 ### Live Discord validation snapshot (2026-05-06)
 
@@ -140,6 +159,7 @@ A live Discord validation pass covered the currently implemented `/say` path:
 
 ### Still to do
 
+- [ ] Run a fresh live pass covering the new onboarding-backed player definition and room/channel projection behavior.
 - [ ] Run the remaining run-sheet scenarios against the live bot and capture artifacts in the run log.
 - [ ] Room and role projection checks (channels, permissions, mappings).
 - [ ] Open-question and canonization loop in Discord.
