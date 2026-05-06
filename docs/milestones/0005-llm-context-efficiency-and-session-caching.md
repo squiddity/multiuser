@@ -75,3 +75,4 @@ This means statement-store use still changes the request from turn to turn, but 
 - `docs/llm-runtime.md` — current runtime boundary and integration posture.
 - `docs/memory-model.md` — canonical memory and summarization posture.
 - `docs/statement-store-abstraction.md` — statement-store contract that remains authoritative.
+- `docs/llm-narrator-session-profiling.md` — repeatable narrator-path probe for model/provider latency/token/cache measurements.

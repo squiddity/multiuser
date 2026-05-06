@@ -122,6 +122,18 @@ Do not drive the harness by piping a finite input stream into `pnpm dev`; that c
 
 See `docs/cli-harness-driving.md` for the interaction contract and rationale.
 
+## LLM profiling probes
+
+Use live-model probes outside normal test suites when diagnosing provider/runtime behavior:
+
+```bash
+pnpm probe:llm               # one-shot size/concurrency probe
+pnpm probe:llm-raw           # raw agent-level probe
+pnpm probe:narrator-session  # narrator-style multi-turn session probe
+```
+
+The narrator session probe is documented in `docs/llm-narrator-session-profiling.md` and is the preferred path for comparing latency/token/cache behavior across models/providers for milestone 0005 work.
+
 ### Output mode for interactive sessions
 
 When running commands in an interactive/shared terminal session:

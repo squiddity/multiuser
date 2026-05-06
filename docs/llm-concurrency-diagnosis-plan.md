@@ -7,6 +7,7 @@ Establish a repeatable diagnosis path for intermittent demo failures where narra
 ## Current observation
 
 - Single-call probe harness (`scripts/llm-probe.ts`) succeeds consistently across small to very large prompt sizes.
+- Narrator-style session probe (`scripts/narrator-session-probe.ts`) is available for multi-turn, session-aware latency/token/cache profiling across model/provider matrices.
 - Demo runs can fail when multiple workers invoke the model runtime around the same time (notably narrator + briefing-generator).
 - This suggests contention/concurrency behavior, queueing limits, or request-handling differences under overlapping calls.
 

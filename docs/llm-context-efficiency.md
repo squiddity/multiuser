@@ -163,6 +163,8 @@ A better default policy is:
 
 Measure current prompt size, latency, and cache fields by role and turn type.
 
+Use `pnpm probe:narrator-session` (see `docs/llm-narrator-session-profiling.md`) as the repeatable narrator-path baseline harness before and after context-assembly changes.
+
 ### Phase B — Runtime contract upgrade
 
 Add session identity, cache preferences, and structured context segments to the LLM runtime boundary.
@@ -201,6 +203,7 @@ Instead, they will behave like durable sessions with:
 - `docs/runtime-and-processing.md` — stateless worker model and trigger system.
 - `docs/llm-runtime.md` — runtime boundary and current pi integration posture.
 - `docs/statement-store-abstraction.md` — canonical store contract that remains authoritative.
+- `docs/llm-narrator-session-profiling.md` — live-model narrator session probe for latency/token/cache comparisons.
 
 ## Open questions
 

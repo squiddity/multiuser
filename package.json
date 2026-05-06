@@ -9,6 +9,7 @@
     "demo:cli": "node scripts/drive-cli-demo.mjs",
     "probe:llm": "tsx scripts/llm-probe.ts",
     "probe:llm-raw": "tsx scripts/llm-raw-probe.ts",
+    "probe:narrator-session": "tsx scripts/narrator-session-probe.ts",
     "serve": "tsx watch src/index.ts",
     "build": "tsc",
     "start": "node dist/index.js",
