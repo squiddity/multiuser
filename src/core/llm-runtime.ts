@@ -7,11 +7,17 @@ export interface LlmToolDefinition {
   execute: (params: any) => Promise<unknown>;
 }
 
+export type CacheRetention = 'short' | 'long';
+
 export interface LlmRuntimeRequest {
   modelSpec: string;
   systemPrompt: string;
   prompt: string;
   tools?: Record<string, LlmToolDefinition>;
+  /** Stable session identifier for cache-friendly backends */
+  sessionId?: string;
+  /** Cache retention preference */
+  cacheRetention?: CacheRetention;
   metadata?: {
     requestId?: string;
     caller?: string;
@@ -22,8 +28,26 @@ export interface LlmRuntimeRequest {
   };
 }
 
+export interface LlmTokenUsage {
+  inputTokens: number;
+  outputTokens: number;
+  cacheRead: number;
+  cacheWrite: number;
+  totalTokens: number;
+  cost: {
+    input: number;
+    output: number;
+    cacheRead: number;
+    cacheWrite: number;
+    total: number;
+  };
+}
+
 export interface LlmRuntimeResponse {
   text: string;
+  usage?: LlmTokenUsage;
+  /** Tokens per second (outputTokens / elapsedMs * 1000) */
+  tokensPerSecond?: number;
 }
 
 /**

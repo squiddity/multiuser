@@ -11,6 +11,7 @@ import { NewStatement } from '../core/statement.js';
 import { canonizeOpenQuestion, CanonizeError } from '../store/canonize.js';
 import { emitSteeringRequest, SteeringError } from '../store/steering.js';
 import type { EventBus } from '../core/events.js';
+import { handleLlmEvents, initLlmMonitor } from './llm-monitor.js';
 
 const CanonizeRequest = withValidation(
   Type.Object({
@@ -47,6 +48,9 @@ const SteerRequest = withValidation(
 );
 
 export function createApp(events: EventBus): Hono {
+  // Initialize LLM telemetry monitor (subscribes to pi-runtime events)
+  initLlmMonitor();
+
   const app = new Hono();
 
   app.use('*', cors());
@@ -154,6 +158,9 @@ export function createApp(events: EventBus): Hono {
       throw err;
     }
   });
+
+  // SSE endpoint for live LLM telemetry monitoring
+  app.get('/llm-events', handleLlmEvents);
 
   app.post('/api/rooms/:roomId/canonize', async (c) => {
     const roomId = c.req.param('roomId');

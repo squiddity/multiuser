@@ -50,6 +50,9 @@ const EnvSchema = withValidation(
     LLM_SERIALIZE_CALLS: Type.Optional(
       Type.Union([Type.Literal('0'), Type.Literal('1')], { default: '0' }),
     ),
+    CACHE_RETENTION: Type.Optional(
+      Type.Union([Type.Literal('short'), Type.Literal('long')], { default: 'short' }),
+    ),
     LOG_DB_NOTICES: Type.Optional(
       Type.Union([Type.Literal('0'), Type.Literal('1')], { default: '0' }),
     ),
@@ -84,6 +87,7 @@ export type Env = {
   LLM_CALL_TIMEOUT_MS: number;
   ENABLE_BRIEFING_GENERATOR: boolean;
   LLM_SERIALIZE_CALLS: boolean;
+  CACHE_RETENTION: 'short' | 'long';
   LOG_DB_NOTICES: boolean;
   LOG_LLM_INPUT: boolean;
 };
@@ -105,6 +109,13 @@ const parsed = EnvSchema.parse({
     ? Number(process.env.LLM_CALL_TIMEOUT_MS)
     : undefined,
 });
+
+const cacheRetentionRaw = process.env.CACHE_RETENTION;
+
+function parseCacheRetention(val: string | undefined): 'short' | 'long' {
+  if (val === 'long') return 'long';
+  return 'short';
+}
 
 export const env: Env = {
   NODE_ENV: parsed.NODE_ENV ?? 'development',
@@ -129,6 +140,7 @@ export const env: Env = {
   LLM_CALL_TIMEOUT_MS: parsed.LLM_CALL_TIMEOUT_MS ?? 90000,
   ENABLE_BRIEFING_GENERATOR: parsed.ENABLE_BRIEFING_GENERATOR !== '0',
   LLM_SERIALIZE_CALLS: parsed.LLM_SERIALIZE_CALLS === '1',
+  CACHE_RETENTION: parseCacheRetention(process.env.CACHE_RETENTION),
   LOG_DB_NOTICES: parsed.LOG_DB_NOTICES === '1',
   LOG_LLM_INPUT: parsed.LOG_LLM_INPUT === '1',
 };
