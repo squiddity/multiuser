@@ -271,11 +271,11 @@ describe('integration: narrator prompt reflects active steering', () => {
       prompt: string;
     };
 
-    expect(callArg.prompt).toContain('Active GM steering');
+    expect(callArg.prompt).toContain('## Active Steering');
     expect(callArg.prompt).toContain('tense and ominous');
     expect(callArg.prompt).toContain('No slapstick');
     expect(callArg.prompt).toContain('Escalate urgency before travel resumes.');
-    expect(callArg.prompt).toContain('intent=tone');
+    expect(callArg.prompt).toContain('**intent:** tone');
   });
 
   it('narrator prompt omits steering block when no active steering applies', async () => {
@@ -293,6 +293,6 @@ describe('integration: narrator prompt reflects active steering', () => {
     await narrator.compose(PARTY_ROOM_ID, PLAYER_USER, 'We look around.');
 
     const callArg = mockLlmGenerate.mock.calls[0]![0] as { prompt: string };
-    expect(callArg.prompt).not.toContain('Active GM steering');
+    expect(callArg.prompt).not.toContain('## Active Steering');
   });
 });
