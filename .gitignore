@@ -10,3 +10,4 @@ drizzle/meta/
 .claude/
 .pi/
 test-api/__pycache__/
+test-results/

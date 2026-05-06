@@ -58,7 +58,7 @@ export type RoutingDecisionSource = Static<typeof RoutingDecisionSourceSchema>;
 const CharacterDraftSchema = Type.Object({
   name: Type.String({ minLength: 2, maxLength: 40 }),
   pronouns: Type.Optional(Type.String({ minLength: 0, maxLength: 60 })),
-  profile: Type.Record(NonEmptyString, NonEmptyString),
+  profile: Type.Record(NonEmptyString, NonEmptyString, { minProperties: 1 }),
   hook: Type.String({ minLength: 10, maxLength: 280 }),
 });
 export const CharacterDraft = withValidation(CharacterDraftSchema);

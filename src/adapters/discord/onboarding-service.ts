@@ -6,6 +6,10 @@ export interface OnboardingSession {
   draft: Partial<CharacterDraft>;
   retryCounts: Record<'name' | 'pronouns' | 'profile' | 'hook', number>;
   updatedAt: string;
+  /** Agent conversation history for the agentic flow */
+  conversationHistory: string[];
+  /** Cached component specs from last agent output (for modal lookup) */
+  lastComponents: unknown[];
 }
 
 function nowIso(): string {
@@ -32,6 +36,8 @@ export class InMemoryOnboardingService {
         hook: 0,
       },
       updatedAt: nowIso(),
+      conversationHistory: [],
+      lastComponents: [],
     };
     this.sessions.set(userId, created);
     return created;
@@ -39,6 +45,19 @@ export class InMemoryOnboardingService {
 
   getSession(userId: string): OnboardingSession | undefined {
     return this.sessions.get(userId);
+  }
+
+  addHistory(userId: string, entry: string): OnboardingSession {
+    const session = this.getOrCreateSession(userId);
+    session.conversationHistory.push(entry);
+    session.updatedAt = nowIso();
+    return session;
+  }
+
+  getConversationHistory(userId: string): string {
+    const session = this.sessions.get(userId);
+    if (!session) return '(no conversation yet)';
+    return session.conversationHistory.join('\n') || '(no conversation yet)';
   }
 
   setName(userId: string, name: string): OnboardingSession {
@@ -70,6 +89,22 @@ export class InMemoryOnboardingService {
     const session = this.getOrCreateSession(userId);
     session.draft.hook = hook;
     session.step = 'character-confirmed';
+    session.updatedAt = nowIso();
+    return session;
+  }
+
+  /**
+   * Merge agent-provided draft back into session.
+   * Used when the agent returns a complete draft.
+   */
+  mergeDraft(userId: string, draft: Record<string, unknown>): OnboardingSession {
+    const session = this.getOrCreateSession(userId);
+    if (typeof draft.name === 'string') session.draft.name = draft.name;
+    if (typeof draft.pronouns === 'string') session.draft.pronouns = draft.pronouns;
+    if (draft.profile && typeof draft.profile === 'object') {
+      session.draft.profile = draft.profile as Record<string, string>;
+    }
+    if (typeof draft.hook === 'string') session.draft.hook = draft.hook;
     session.updatedAt = nowIso();
     return session;
   }

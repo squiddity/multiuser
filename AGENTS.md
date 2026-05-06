@@ -66,6 +66,10 @@ pnpm test:integration
 - **Format**: `npx prettier --write .` (fix) or `npx prettier --check .` (check)
 - **All CI**: typecheck, unit tests, integration tests, format check
 
+## Tool preferences
+
+- **Prefer `bash` with `usePTY=true` over `tmux`** for running commands. Use tmux only when a command truly needs long-running background persistence (e.g., dev servers, watchers). For one-shot commands, demos, tests, and builds, use bash with live PTY view so the user can see progress in real time.
+
 ## Imports (active tier — always loaded)
 
 @docs/building.md

@@ -32,6 +32,7 @@ Fix the concrete stack, component topology, and code layout for v1. Everything a
 - **Local interfaces (`LlmRuntime`, `StatementStore`)** isolate worker and agent code from concrete implementations.
 - **Statement store stays authoritative.** Canonical memory, scopes, provenance, and governance decisions remain in Postgres through our own store contracts.
 - **Markdown instructions are first-class configuration artifacts.** Agent behavior and resolver policy live in markdown data where possible; security and scope invariants stay in code.
+- **Unified agentic pattern.** Narration, rules resolution, and onboarding share the same architecture: markdown instructions → generic agent (pi-agent-core turn loop) + shared tool primitives → structured output → thin hardcoded boundary (schema validation, scope enforcement, platform rendering). The agent is the inference engine; instructions are data; tools are shared; the hardcoded boundary is the narrowest possible surface.
 - **Future option:** selective adoption of `pi-coding-agent` remains open (especially session compaction hooks/extensions) without changing canonical-store authority.
 
 ## Component topology
@@ -63,17 +64,19 @@ Fix the concrete stack, component topology, and code layout for v1. Everything a
 │  • briefing-generator │       │  • future: pf2e, ...     │
 │  • ingester           │       └──────────────────────────┘
 │  • style-extractor    │
-│  • consistency-audit  │
-│  • open-q-resolver    │
-│  • reconciler         │
-│  • interceptors       │
-└──────┬────────────────┘
-       │
-┌──────┴──────────────────┐   ┌──────────────────────┐
-│  Scheduler interface    │   │  pi-ai + pi-agent-   │
-│  Tier 0: croner impl    │   │  core runtime layer  │
-│  Tier 3 (later): Temporal│  │  (via LlmRuntime)    │
-└──────────────────────────┘   └──────────────────────┘
+│  • consistency-audit  │       ┌──────────────────────────┐
+│  • open-q-resolver    │       │  Agent registry          │
+│  • reconciler         │       │  (markdown-instructed)   │
+│  • interceptors       │       │  • narrator              │
+│  • onboarding-agent   │       │  • resolver-agent        │
+└──────┬────────────────┘       │  • onboarding-agent      │
+       │                        └──────────────────────────┘
+       │                                 │
+┌──────┴──────────────────┐   ┌──────────┴──────────────┐
+│  Scheduler interface    │   │  pi-ai + pi-agent-      │
+│  Tier 0: croner impl    │   │  core runtime layer     │
+│  Tier 3 (later): Temporal│  │  (via LlmRuntime)       │
+└──────────────────────────┘   └─────────────────────────┘
 ```
 
 Every arrow is schema-typed via TypeBox contracts.
@@ -137,6 +140,8 @@ src/
     tools/
       roll.ts             # local LLM tool contract: roll(count, sides, modifier?, seed?)
       retrieve.ts         # local LLM tool contract: retrieve(scope, query)
+      render.ts           # local LLM tool contract: render(components) → Discord UI
+      validate.ts         # local LLM tool contract: validate(draft, schema) → errors
     types.ts              # shared resolver agent types (instructions config, tool defs)
     dnd5e/
       instructions.md     # skill-check agent instructions (data artifact)
@@ -144,6 +149,7 @@ src/
   agents/               # role-focused agent implementations
     narrator.ts
     decision-formalizer.ts   # formalizes GM open-question decisions (authoring-decision)
+    onboarding-agent.ts      # agentic onboarding: markdown-instructed, tool-equipped
     world-author.ts
     style-extractor.ts
     consistency-auditor.ts
@@ -167,6 +173,12 @@ world/                  # seed authoring content (markdown + yaml)
   rules/
   fiction/
   style/
+content/               # agent instructions (markdown, first-class config)
+  agents/
+    narrator.md        # narrator persona, tone, output format
+    decision-formalizer.md
+    onboarding-narrator.md  # onboarding agent persona + profile schema
+    (campaign overrides via agent-prompt statements in governance scope)
 test/
 docker/
   Dockerfile

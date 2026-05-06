@@ -2,9 +2,65 @@
 
 ## Purpose
 
-Define the primary user-bootstrap path for Discord: invite-driven entry, automatic identity linking, guided in-chat character creation, and placement into the intended room scope.
+Define the primary user-bootstrap path for Discord: invite-driven entry, automatic identity linking, agentic guided character creation, and placement into the intended room scope.
 
 This spec establishes the **default path** for first-time users. Manual `/link` remains a fallback/recovery path, not the normal experience.
+
+## Architecture: agentic onboarding
+
+Onboarding is one instantiation of the general agentic pattern shared across narration, rules resolution, and other agent-driven flows (see `docs/implementation.md` and decisions D52, D63).
+
+### Components
+
+```
+┌──────────────────────────────────────────────────────┐
+│  content/agents/onboarding-narrator.md              │
+│  • Agent persona and tone                           │
+│  • Profile schema (required/optional fields)        │
+│  • Conversational flow guidelines                   │
+│  • Validation recovery instructions                 │
+│  • Campaign overrides via agent-prompt statements   │
+└────────────────────┬─────────────────────────────────┘
+                     │ loadAgentPrompt()
+                     ▼
+┌──────────────────────────────────────────────────────┐
+│  Onboarding Agent (pi-agent-core turn loop)          │
+│  • Receives: conversation history + draft state      │
+│  • Decides: what to ask next                         │
+│  • Outputs: { message, components } or               │
+│             { message, complete: true, draft }       │
+│  • Recovers from validation failures conversationally│
+└────────┬──────────────────────────────┬──────────────┘
+         │                              │
+         ▼                              ▼
+┌────────────────────┐    ┌──────────────────────────┐
+│  Tools              │    │  Hardcoded Boundary       │
+│  • render(comps)    │    │  • CharacterDraft schema  │
+│    → Discord UI     │    │    validation (TypeBox)   │
+│  • validate(draft)  │    │  • Scope enforcement      │
+│    → schema check   │    │  • Discord component      │
+│  • retrieve(query)  │    │    rendering              │
+│    → state lookup   │    │  • Interaction lifecycle  │
+└────────────────────┘    └──────────────────────────┘
+```
+
+### Split of responsibilities
+
+| Layer                     | What it owns                                                                   | How it's configured                                                         |
+| ------------------------- | ------------------------------------------------------------------------------ | --------------------------------------------------------------------------- |
+| **Markdown instructions** | Persona, tone, field descriptions, conversational style                        | `content/agents/onboarding-narrator.md` + campaign `agent-prompt` overrides |
+| **Agent (LLM)**           | Flow control, field ordering, messaging, validation recovery                   | Instructions + profile schema as data                                       |
+| **Tools**                 | Discord UI rendering, schema validation, state retrieval                       | Shared tool primitives, no onboarding-specific logic                        |
+| **Hardcoded boundary**    | `CharacterDraft` TypeBox schema, scope enforcement, Discord component builders | Code; the narrowest possible surface                                        |
+
+### State persistence
+
+Onboarding session state lives in the **statement store**, not in-memory:
+
+- Session lifecycle events (invited → joined → linked → … → completed) are `kind=governance` statements with onboarding scope
+- Character drafts are written as structured `fields` on session statements
+- The agent is stateless — state reconstruction is deterministic from statements
+- This survives process restarts and enables interrupted-session resumption (F3)
 
 Concrete message-by-message interaction script lives in `docs/discord-onboarding-interaction-script.md`.
 
@@ -38,7 +94,7 @@ Concrete message-by-message interaction script lives in `docs/discord-onboarding
 
 ## Primary flow (happy path)
 
-### Step 0 — Operator issues reusable scoped invite
+### Step 0 - Operator issues reusable scoped invite
 
 Operator initiates invite creation for a specific target onboarding flow. Invites are reusable within policy constraints (expiry, max uses, optional campaign cap), not one-time links.
 
@@ -47,7 +103,7 @@ Expected system effects:
 - Create reusable onboarding ticket template with expiry, optional use limits, and target campaign metadata.
 - Emit governance/mapping statements for invite issuance.
 
-### Step 1 — User joins via invite URL
+### Step 1 - User joins via invite URL
 
 User joins Discord guild using generated invite.
 
@@ -61,7 +117,7 @@ Expected system effects:
 - Resolve invite token → target campaign/room scope.
 - Create or resume onboarding session record.
 
-### Step 2 — Auto-link identity
+### Step 2 - Auto-link identity
 
 System links the Discord account (`userAccountId`, `userAccountType=discord`) to the cross-account `userId` as part of onboarding session.
 
@@ -75,40 +131,43 @@ Expected system effects:
 - Persist `userAccountId` ↔ `userId` mapping.
 - Idempotent behavior on retries/rejoins.
 
-### Step 3 — Guided character creation (chat-native)
+### Step 3 — Agentic guided character creation (chat-native)
 
-Narrator runs a compact creation sequence (buttons/selects/modals as needed):
+Onboarding agent (markdown-instructed, tool-equipped) runs a conversational creation sequence:
 
-- Character name
-- Pronouns/display preference (optional but supported)
-- One or more profile fields from active rules/onboarding configuration (e.g. archetype/playstyle)
-- One short backstory hook or motivation
+- The agent receives the profile schema from its instructions (which fields to collect, which are required).
+- It decides what to ask next based on what's missing and the conversation so far.
+- When a field is needed, it outputs `{ message, components }` — the thin adapter renders Discord buttons/modals/selects from the component specs.
+- When the agent believes all required fields are complete, it calls `validate(draft)` — if validation fails, the agent receives the errors and adapts conversationally ("Ah, I forgot to ask your name — what is it?").
+- The agent may collect fields in any order, skip optional fields, or re-ask after edits.
 
 Expected UX:
 
-- Conversational framing with explicit progress (“2 of 4 complete”).
-- Validation errors are friendly and actionable.
+- Conversational framing with explicit progress ("2 of 4 complete").
+- Validation errors are friendly and actionable. No hardcoded field-by-field switch statements.
+- The agent's persona and tone come from its markdown instructions, enabling in-character onboarding (tavern keeper, academy registrar, etc.) without code changes.
 
 Expected system effects:
 
-- Write structured character draft fields as statements or draft entity records.
+- Agent turns produce statements with structured `fields` recording draft updates.
+- Each completed field is a statement in the onboarding session scope.
 - Maintain resumable progress markers.
 
-### Step 4 — Character summary and confirmation
+### Step 4 - Character summary and confirmation
 
 Narrator posts a final summary card for confirmation.
 
 Expected UX:
 
 - User can confirm or edit specific fields.
-- Confirmation message includes what happens next (“You are entering <room>”).
+- Confirmation message includes what happens next ("You are entering <room>").
 
 Expected system effects:
 
 - Finalize character entity.
 - Emit provenance chain from prompts to confirmed character fields.
 
-### Step 5 — Room placement and activation
+### Step 5 - Room placement and activation
 
 System applies role grants and room mapping, then places the user account in a destination selected by onboarding routing policy.
 
@@ -123,14 +182,14 @@ Expected system effects:
 - Routing decision recorded (`destination-room-id`, decision source, confidence/notes).
 - `acting-as` initialization written (single-character default in v1; one active `characterId` per `userAccountId` in shared channels).
 
-### Step 6 — First in-room handoff
+### Step 6 - First in-room handoff
 
 Narrator posts first-turn handoff in target room acknowledging the new character and inviting first action.
 
 Expected UX:
 
 - Immediate transition from onboarding to play.
-- No ambiguous “what do I do now?” state.
+- No ambiguous "what do I do now?" state.
 
 Expected system effects:
 
@@ -163,7 +222,7 @@ Expected system effects:
 - For multi-step freeform turns needing privacy, promote user to a **private thread or private channel** session.
 - On completion, **hide/lock onboarding surface** for that user.
 
-This delivers the “user sees their own bot interaction, not others’” behavior in practice while staying within Discord primitives.
+This delivers the "user sees their own bot interaction, not others'" behavior in practice while staying within Discord primitives.
 
 ### Channel routing policy (post-onboarding destination)
 
@@ -181,24 +240,24 @@ Guardrails:
 
 ## Recovery and fallback flows
 
-### F1 — Expired or invalid invite token
+### F1 - Expired or invalid invite token
 
 - UX: clear error + re-request instructions.
 - System: no partial link/role grant applied.
 
-### F2 — Already-linked returning user
+### F2 - Already-linked returning user
 
 - UX: skip linking step; resume/continue onboarding or route directly if completed.
 - System: deduplicate mapping writes (idempotent).
 
-### F3 — Interrupted onboarding
+### F3 - Interrupted onboarding
 
 - UX: resume prompt on next interaction/join.
 - System: onboarding session state machine resumes from last completed step.
 
-### F4 — Auto-link failure
+### F4 - Auto-link failure
 
-- UX: guided fallback to `/link` with explicit “recovery mode” messaging.
+- UX: guided fallback to `/link` with explicit "recovery mode" messaging.
 - System: fallback path logged distinctly for diagnostics.
 
 ## State model (implementation contract)
@@ -216,9 +275,10 @@ Onboarding session states:
 
 Requirements:
 
-- Transitions are append-only records.
+- Transitions are append-only records in the statement store.
 - Replaying transitions reconstructs onboarding status deterministically.
-- Handlers are idempotent per transition key.
+- The agent is stateless; handlers are idempotent per transition key.
+- Session state persists across process restarts.
 
 ## Data and statement requirements
 

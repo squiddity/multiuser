@@ -1,7 +1,6 @@
 import {
   ActionRowBuilder,
   ButtonBuilder,
-  ButtonStyle,
   ChannelType,
   Client,
   GatewayIntentBits,
@@ -17,436 +16,87 @@ import {
 } from 'discord.js';
 import type { Logger } from 'pino';
 import { normalizeOnboardingInput, type CharacterDraft } from '../../core/onboarding.js';
-import { InMemoryOnboardingService, type OnboardingSession } from './onboarding-service.js';
+import { InMemoryOnboardingStore, type OnboardingStore } from './onboarding-store.js';
+import { createOnboardingAgent, type OnboardingAgent } from '../../agents/onboarding-agent.js';
+import {
+  renderComponentSpecs,
+  findModalByOpenButton,
+  findModalBySubmitId,
+  type ComponentSpec,
+  type ModalSpec,
+} from '../../resolvers/tools/render.js';
+import { validateCharacterDraft, formatValidationErrors } from '../../resolvers/tools/validate.js';
+import { env } from '../../config/env.js';
 
-const DEMO_PROFILE_FIELD = {
-  key: 'archetype',
-  label: 'Archetype / playstyle',
-  options: [
-    { value: 'frontline', label: 'Frontline', description: 'Direct, bold approach' },
-    { value: 'scout', label: 'Scout', description: 'Stealth and mobility' },
-    { value: 'scholar', label: 'Scholar', description: 'Knowledge and analysis' },
-    { value: 'face', label: 'Face', description: 'Social influence and diplomacy' },
-    { value: 'wildcard', label: 'Wildcard', description: 'Unpredictable style' },
-  ],
-} as const;
+const DEFAULT_MODEL = 'openrouter:deepseek/deepseek-chat';
+
+// --- Modal rendering (Discord.js specific) ---
+
+function buildDiscordModal(spec: ModalSpec): ModalBuilder {
+  const modal = new ModalBuilder().setCustomId(spec.customId).setTitle(spec.title);
+
+  const rows = spec.fields.map((field) => {
+    const textInput = new TextInputBuilder()
+      .setCustomId(field.customId)
+      .setLabel(field.label)
+      .setStyle(field.style === 'paragraph' ? TextInputStyle.Paragraph : TextInputStyle.Short)
+      .setRequired(field.required);
+
+    if (field.minLength !== undefined) textInput.setMinLength(field.minLength);
+    if (field.maxLength !== undefined) textInput.setMaxLength(field.maxLength);
+    if (field.placeholder) textInput.setPlaceholder(field.placeholder);
+
+    return new ActionRowBuilder<TextInputBuilder>().addComponents(textInput);
+  });
+
+  modal.addComponents(rows);
+  return modal;
+}
+
+// --- Component rendering from agent spec ---
+
+function renderAgentComponents(specs: ComponentSpec[]): ActionRowBuilder<any>[] {
+  return renderComponentSpecs(specs);
+}
+
+// --- Interaction serialization ---
+
+function describeButtonClick(customId: string): string {
+  const labels: Record<string, string> = {
+    'onboard.continue': 'User clicked Continue.',
+    'onboard.cancel': 'User cancelled onboarding.',
+    'onboard.name.open': 'User wants to set their character name.',
+    'onboard.pronouns.open': 'User wants to set pronouns.',
+    'onboard.hook.open': 'User wants to set their backstory hook.',
+    'onboard.private-thread.open': 'User requested a private thread.',
+    'onboard.edit.name': 'User wants to edit their character name.',
+    'onboard.edit.pronouns': 'User wants to edit their pronouns.',
+    'onboard.edit.profile': 'User wants to edit their archetype.',
+    'onboard.edit.hook': 'User wants to edit their backstory hook.',
+    'onboard.confirm': 'User confirmed the final character.',
+  };
+  return labels[customId] ?? `User clicked button: ${customId}.`;
+}
+
+function getDraftForAgent(draft: {
+  name?: string;
+  pronouns?: string;
+  profile: Record<string, string>;
+  hook?: string;
+}): Record<string, unknown> {
+  return {
+    name: draft.name,
+    pronouns: draft.pronouns,
+    profile: draft.profile ?? {},
+    hook: draft.hook,
+  };
+}
+
+// --- Main demo bot ---
 
 export interface DiscordDemoBotController {
   client: Client;
   stop(): Promise<void>;
-}
-
-function progressText(session: OnboardingSession): string {
-  let complete = 0;
-  if (session.draft.name) complete += 1;
-  if (typeof session.draft.pronouns !== 'undefined') complete += 1;
-  if (session.draft.profile?.[DEMO_PROFILE_FIELD.key]) complete += 1;
-  if (session.draft.hook) complete += 1;
-  return `Progress: ${complete}/4`;
-}
-
-function renderSummary(session: OnboardingSession): string {
-  return [
-    '**Character Summary**',
-    `- Name: ${session.draft.name ?? '_not set_'}`,
-    `- Pronouns/display: ${session.draft.pronouns ?? 'not specified'}`,
-    `- ${DEMO_PROFILE_FIELD.label}: ${session.draft.profile?.[DEMO_PROFILE_FIELD.key] ?? '_not set_'}`,
-    `- Hook: ${session.draft.hook ?? '_not set_'}`,
-    progressText(session),
-  ].join('\n');
-}
-
-function welcomeComponents() {
-  return [
-    new ActionRowBuilder<ButtonBuilder>().addComponents(
-      new ButtonBuilder()
-        .setCustomId('onboard.continue')
-        .setLabel('Continue')
-        .setStyle(ButtonStyle.Primary),
-      new ButtonBuilder()
-        .setCustomId('onboard.cancel')
-        .setLabel('Cancel')
-        .setStyle(ButtonStyle.Danger),
-    ),
-  ];
-}
-
-function namePromptComponents() {
-  return [
-    new ActionRowBuilder<ButtonBuilder>().addComponents(
-      new ButtonBuilder()
-        .setCustomId('onboard.name.open')
-        .setLabel('Set name')
-        .setStyle(ButtonStyle.Primary),
-      new ButtonBuilder()
-        .setCustomId('onboard.cancel')
-        .setLabel('Cancel')
-        .setStyle(ButtonStyle.Danger),
-    ),
-  ];
-}
-
-function pronounsPromptComponents() {
-  return [
-    new ActionRowBuilder<ButtonBuilder>().addComponents(
-      new ButtonBuilder()
-        .setCustomId('onboard.pronouns.open')
-        .setLabel('Set preference')
-        .setStyle(ButtonStyle.Secondary),
-      new ButtonBuilder()
-        .setCustomId('onboard.continue')
-        .setLabel('Skip')
-        .setStyle(ButtonStyle.Secondary),
-    ),
-  ];
-}
-
-function profilePromptComponents() {
-  return [
-    new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(
-      new StringSelectMenuBuilder()
-        .setCustomId('onboard.profile.select')
-        .setPlaceholder(`Pick ${DEMO_PROFILE_FIELD.label.toLowerCase()}`)
-        .addOptions(
-          DEMO_PROFILE_FIELD.options.map((option) => ({
-            label: option.label,
-            value: option.value,
-            description: option.description,
-          })),
-        ),
-    ),
-  ];
-}
-
-function hookPromptComponents() {
-  return [
-    new ActionRowBuilder<ButtonBuilder>().addComponents(
-      new ButtonBuilder()
-        .setCustomId('onboard.hook.open')
-        .setLabel('Add hook')
-        .setStyle(ButtonStyle.Primary),
-      new ButtonBuilder()
-        .setCustomId('onboard.private-thread.open')
-        .setLabel('Open private thread')
-        .setStyle(ButtonStyle.Secondary),
-    ),
-  ];
-}
-
-function reviewComponents() {
-  return [
-    new ActionRowBuilder<ButtonBuilder>().addComponents(
-      new ButtonBuilder()
-        .setCustomId('onboard.confirm')
-        .setLabel('Confirm character')
-        .setStyle(ButtonStyle.Success),
-      new ButtonBuilder()
-        .setCustomId('onboard.edit.name')
-        .setLabel('Edit name')
-        .setStyle(ButtonStyle.Secondary),
-      new ButtonBuilder()
-        .setCustomId('onboard.edit.profile')
-        .setLabel(`Edit ${DEMO_PROFILE_FIELD.label}`)
-        .setStyle(ButtonStyle.Secondary),
-      new ButtonBuilder()
-        .setCustomId('onboard.edit.hook')
-        .setLabel('Edit hook')
-        .setStyle(ButtonStyle.Secondary),
-    ),
-  ];
-}
-
-async function showNameModal(interaction: ButtonInteraction): Promise<void> {
-  const modal = new ModalBuilder()
-    .setCustomId('onboard.name.submit')
-    .setTitle('Set character name');
-  modal.addComponents(
-    new ActionRowBuilder<TextInputBuilder>().addComponents(
-      new TextInputBuilder()
-        .setCustomId('name')
-        .setLabel('Character name')
-        .setStyle(TextInputStyle.Short)
-        .setMinLength(2)
-        .setMaxLength(40)
-        .setRequired(true),
-    ),
-  );
-  await interaction.showModal(modal);
-}
-
-async function showPronounsModal(interaction: ButtonInteraction): Promise<void> {
-  const modal = new ModalBuilder()
-    .setCustomId('onboard.pronouns.submit')
-    .setTitle('Pronouns / display preference');
-  modal.addComponents(
-    new ActionRowBuilder<TextInputBuilder>().addComponents(
-      new TextInputBuilder()
-        .setCustomId('pronouns')
-        .setLabel('Pronouns / display preference')
-        .setStyle(TextInputStyle.Short)
-        .setMaxLength(60)
-        .setRequired(false),
-    ),
-  );
-  await interaction.showModal(modal);
-}
-
-async function showHookModal(interaction: ButtonInteraction): Promise<void> {
-  const modal = new ModalBuilder().setCustomId('onboard.hook.submit').setTitle('Backstory hook');
-  modal.addComponents(
-    new ActionRowBuilder<TextInputBuilder>().addComponents(
-      new TextInputBuilder()
-        .setCustomId('hook')
-        .setLabel('Goal, debt, promise, or mystery')
-        .setStyle(TextInputStyle.Paragraph)
-        .setMinLength(10)
-        .setMaxLength(280)
-        .setRequired(true),
-    ),
-  );
-  await interaction.showModal(modal);
-}
-
-async function continueFlow({
-  interaction,
-  session,
-}: {
-  interaction: ButtonInteraction;
-  session: OnboardingSession;
-}): Promise<void> {
-  if (!session.draft.name) {
-    await interaction.update({
-      content: `Choose your character name.\n${progressText(session)}`,
-      components: namePromptComponents(),
-    });
-    return;
-  }
-
-  if (!session.draft.profile?.[DEMO_PROFILE_FIELD.key]) {
-    if (typeof session.draft.pronouns === 'undefined') {
-      await interaction.update({
-        content: `Optional: share pronouns or display preference.\n${progressText(session)}`,
-        components: pronounsPromptComponents(),
-      });
-      return;
-    }
-
-    await interaction.update({
-      content: `Pick your starting ${DEMO_PROFILE_FIELD.label.toLowerCase()}.\n${progressText(session)}`,
-      components: profilePromptComponents(),
-    });
-    return;
-  }
-
-  if (!session.draft.hook) {
-    await interaction.update({
-      content: `Give one short hook: a goal, debt, promise, or mystery.\n${progressText(session)}`,
-      components: hookPromptComponents(),
-    });
-    return;
-  }
-
-  await interaction.update({ content: renderSummary(session), components: reviewComponents() });
-}
-
-function ensureDraftComplete(
-  session: OnboardingSession,
-): session is OnboardingSession & { draft: CharacterDraft } {
-  return Boolean(
-    session.draft.name && session.draft.profile?.[DEMO_PROFILE_FIELD.key] && session.draft.hook,
-  );
-}
-
-async function handleButton({
-  interaction,
-  service,
-  logger,
-}: {
-  interaction: ButtonInteraction;
-  service: InMemoryOnboardingService;
-  logger: Logger;
-}): Promise<void> {
-  const session = service.getOrCreateSession(interaction.user.id);
-
-  switch (interaction.customId) {
-    case 'onboard.continue':
-      await continueFlow({ interaction, session });
-      return;
-    case 'onboard.cancel':
-      service.reset(interaction.user.id);
-      await interaction.update({
-        content: 'Onboarding canceled. Run /start-onboarding to begin again.',
-        components: [],
-      });
-      return;
-    case 'onboard.name.open':
-      await showNameModal(interaction);
-      return;
-    case 'onboard.pronouns.open':
-      await showPronounsModal(interaction);
-      return;
-    case 'onboard.hook.open':
-      await showHookModal(interaction);
-      return;
-    case 'onboard.private-thread.open': {
-      const channel = interaction.channel;
-      if (!channel || channel.type !== ChannelType.GuildText || !('threads' in channel)) {
-        await interaction.update({
-          content: 'Could not open a private thread in this channel. Continue in ephemeral flow.',
-          components: hookPromptComponents(),
-        });
-        return;
-      }
-
-      const thread = await channel.threads.create({
-        name: `onboarding-${interaction.user.username}`.slice(0, 50),
-        autoArchiveDuration: 60,
-        type: ChannelType.PrivateThread,
-        invitable: false,
-        reason: 'Onboarding private drafting session',
-      });
-      await thread.members.add(interaction.user.id);
-      await thread.send(
-        'Private onboarding started. Continue by pressing **Add hook** in your ephemeral flow.',
-      );
-      await interaction.update({
-        content: `Opened private thread: <#${thread.id}>\nContinue in this ephemeral flow when ready.`,
-        components: hookPromptComponents(),
-      });
-      return;
-    }
-    case 'onboard.edit.name':
-      await showNameModal(interaction);
-      return;
-    case 'onboard.edit.profile':
-      await interaction.update({
-        content: `Pick your starting ${DEMO_PROFILE_FIELD.label.toLowerCase()}.\n${progressText(session)}`,
-        components: profilePromptComponents(),
-      });
-      return;
-    case 'onboard.edit.hook':
-      await showHookModal(interaction);
-      return;
-    case 'onboard.confirm':
-      if (!ensureDraftComplete(session)) {
-        await interaction.update({
-          content: 'Character is incomplete. Please finish all required fields first.',
-          components: reviewComponents(),
-        });
-        return;
-      }
-
-      service.confirm(interaction.user.id);
-      await interaction.update({
-        content: `${renderSummary(session)}\n\n✅ Onboarding complete (demo).`,
-        components: [],
-      });
-      logger.info(
-        { userId: interaction.user.id, draft: session.draft },
-        'demo onboarding completed',
-      );
-      return;
-    default:
-      await interaction.reply({ content: 'Unknown action.', flags: MessageFlags.Ephemeral });
-  }
-}
-
-async function handleSelect({
-  interaction,
-  service,
-}: {
-  interaction: StringSelectMenuInteraction;
-  service: InMemoryOnboardingService;
-}): Promise<void> {
-  if (interaction.customId !== 'onboard.profile.select') {
-    return;
-  }
-
-  const selected = interaction.values[0];
-  const profileValue = DEMO_PROFILE_FIELD.options.find((opt) => opt.value === selected)?.value;
-  if (!profileValue) {
-    await interaction.update({
-      content: `Invalid ${DEMO_PROFILE_FIELD.label.toLowerCase()}.`,
-      components: profilePromptComponents(),
-    });
-    return;
-  }
-
-  const session = service.setProfileValue(
-    interaction.user.id,
-    DEMO_PROFILE_FIELD.key,
-    profileValue,
-  );
-  await interaction.update({
-    content: `${DEMO_PROFILE_FIELD.label} saved: **${profileValue}**\n${progressText(session)}`,
-    components: hookPromptComponents(),
-  });
-}
-
-async function handleModal({
-  interaction,
-  service,
-}: {
-  interaction: ModalSubmitInteraction;
-  service: InMemoryOnboardingService;
-}): Promise<void> {
-  if (interaction.customId === 'onboard.name.submit') {
-    const name = normalizeOnboardingInput(interaction.fields.getTextInputValue('name'));
-    const session = service.setName(interaction.user.id, name);
-    await interaction.reply({
-      flags: MessageFlags.Ephemeral,
-      content: `Name saved: **${name}**\n${progressText(session)}`,
-      components: pronounsPromptComponents(),
-    });
-    return;
-  }
-
-  if (interaction.customId === 'onboard.pronouns.submit') {
-    const raw = interaction.fields.getTextInputValue('pronouns');
-    const normalized = normalizeOnboardingInput(raw);
-    const pronouns = normalized.length > 0 ? normalized : undefined;
-    const session = service.setPronouns(interaction.user.id, pronouns);
-    await interaction.reply({
-      flags: MessageFlags.Ephemeral,
-      content: `Saved.\n${progressText(session)}`,
-      components: profilePromptComponents(),
-    });
-    return;
-  }
-
-  if (interaction.customId === 'onboard.hook.submit') {
-    const hook = normalizeOnboardingInput(interaction.fields.getTextInputValue('hook'));
-    const session = service.setHook(interaction.user.id, hook);
-    await interaction.reply({
-      flags: MessageFlags.Ephemeral,
-      content: `Hook saved.\n${progressText(session)}`,
-      components: reviewComponents(),
-    });
-  }
-}
-
-async function registerCommands(
-  client: Client,
-  guildId: string | undefined,
-  logger: Logger,
-): Promise<void> {
-  if (!client.application) {
-    return;
-  }
-
-  const commands = [
-    { name: 'start-onboarding', description: 'Start the demo onboarding flow' },
-    { name: 'ping', description: 'Check bot liveness' },
-  ];
-
-  if (guildId) {
-    await client.application.commands.set(commands, guildId);
-    logger.info({ guildId }, 'registered guild onboarding commands');
-    return;
-  }
-
-  await client.application.commands.set(commands);
-  logger.info('registered global onboarding commands');
 }
 
 export async function startDiscordDemoBot({
@@ -462,7 +112,10 @@ export async function startDiscordDemoBot({
     intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildMessages],
   });
 
-  const onboarding = new InMemoryOnboardingService();
+  const store: OnboardingStore = new InMemoryOnboardingStore();
+  const agent: OnboardingAgent = createOnboardingAgent({
+    modelSpec: env.DEFAULT_MODEL_SPEC || DEFAULT_MODEL,
+  });
 
   client.on('clientReady', async () => {
     logger.info({ bot: client.user?.tag }, 'discord demo bot ready');
@@ -477,28 +130,31 @@ export async function startDiscordDemoBot({
       }
 
       if (interaction.isChatInputCommand() && interaction.commandName === 'start-onboarding') {
-        onboarding.getOrCreateSession(interaction.user.id);
+        store.getOrCreate(interaction.user.id);
+
+        const output = await agent.start(interaction.user.id);
+        store.addHistory(interaction.user.id, `Agent: ${output.message}`);
+
         await interaction.reply({
           flags: MessageFlags.Ephemeral,
-          content:
-            'I’ll guide you through a short setup. First, confirming your account link...\nLinked. Let’s build your character.',
-          components: welcomeComponents(),
+          content: `${output.message}\n${output.progress}`,
+          components: renderAgentComponents(output.components),
         });
         return;
       }
 
       if (interaction.isButton()) {
-        await handleButton({ interaction, service: onboarding, logger });
+        await handleAgenticButton({ interaction, store, agent, logger });
         return;
       }
 
       if (interaction.isStringSelectMenu()) {
-        await handleSelect({ interaction, service: onboarding });
+        await handleAgenticSelect({ interaction, store, agent, logger });
         return;
       }
 
       if (interaction.isModalSubmit()) {
-        await handleModal({ interaction, service: onboarding });
+        await handleAgenticModal({ interaction, store, agent, logger });
       }
     } catch (error) {
       logger.error(
@@ -522,4 +178,258 @@ export async function startDiscordDemoBot({
       client.destroy();
     },
   };
+}
+
+// --- Agentic interaction handlers ---
+
+async function handleAgenticButton({
+  interaction,
+  store,
+  agent,
+  logger,
+}: {
+  interaction: ButtonInteraction;
+  store: OnboardingStore;
+  agent: OnboardingAgent;
+  logger: Logger;
+}): Promise<void> {
+  const session = store.getOrCreate(interaction.user.id);
+
+  // If the button opens a modal, show it
+  const modalSpec = findModalByOpenButton(session.lastComponents, interaction.customId);
+  if (modalSpec) {
+    const modal = buildDiscordModal(modalSpec);
+    await interaction.showModal(modal);
+    return;
+  }
+
+  // Handle cancel directly (no agent needed)
+  if (interaction.customId === 'onboard.cancel') {
+    store.reset(interaction.user.id);
+    await interaction.update({
+      content: 'Onboarding canceled. Run /start-onboarding to begin again.',
+      components: [],
+    });
+    return;
+  }
+
+  // Handle confirm: validate draft before finalizing
+  if (interaction.customId === 'onboard.confirm') {
+    const validation = validateCharacterDraft(getDraftForAgent(session.draft));
+    if (validation.valid) {
+      store.mergeDraft(interaction.user.id, validation.draft as unknown as Record<string, unknown>);
+      store.confirm(interaction.user.id);
+
+      await interaction.update({
+        content: [
+          `✅ **Onboarding complete!**`,
+          '',
+          `Welcome, **${validation.draft.name}**. You are ready to begin your adventure.`,
+        ].join('\n'),
+        components: [],
+      });
+
+      logger.info(
+        { userId: interaction.user.id, draft: validation.draft },
+        'agentic onboarding completed',
+      );
+      return;
+    }
+
+    // Validation failed — feed errors back to agent
+    const errors = formatValidationErrors(validation);
+    store.addHistory(interaction.user.id, `(Validation failed: ${errors})`);
+
+    const output = await agent.turn({
+      draft: getDraftForAgent(session.draft),
+      actionDescription: describeButtonClick(interaction.customId),
+      conversationHistory: store.getHistory(interaction.user.id),
+      validationErrors: errors,
+    });
+
+    store.addHistory(interaction.user.id, `Agent: ${output.message}`);
+    session.lastComponents = output.components;
+
+    await interaction.update({
+      content: `${output.message}\n${output.progress}`,
+      components: renderAgentComponents(output.components),
+    });
+    return;
+  }
+
+  // Handle private thread
+  if (interaction.customId === 'onboard.private-thread.open') {
+    const channel = interaction.channel;
+    if (channel && channel.type === ChannelType.GuildText && 'threads' in channel) {
+      const thread = await (channel as any).threads.create({
+        name: `onboarding-${interaction.user.username}`.slice(0, 50),
+        autoArchiveDuration: 60,
+        type: ChannelType.PrivateThread,
+        invitable: false,
+        reason: 'Onboarding private drafting session',
+      });
+      await thread.members.add(interaction.user.id);
+      await thread.send(
+        'Private onboarding started. Your details here are visible only to you and moderators.',
+      );
+      await interaction.update({
+        content: `Opened private thread: <#${thread.id}>\nContinue in this ephemeral flow when ready.`,
+        components: renderAgentComponents(session.lastComponents),
+      });
+      return;
+    }
+
+    await interaction.reply({
+      flags: MessageFlags.Ephemeral,
+      content: 'Could not open a private thread in this channel.',
+    });
+    return;
+  }
+
+  // General button: serialize, send to agent
+  const actionDesc = describeButtonClick(interaction.customId);
+  store.addHistory(interaction.user.id, `User: ${actionDesc}`);
+
+  const output = await agent.turn({
+    draft: getDraftForAgent(session.draft),
+    actionDescription: actionDesc,
+    conversationHistory: store.getHistory(interaction.user.id),
+  });
+
+  store.addHistory(interaction.user.id, `Agent: ${output.message}`);
+  session.lastComponents = output.components;
+
+  await interaction.update({
+    content: `${output.message}\n${output.progress}`,
+    components: renderAgentComponents(output.components),
+  });
+}
+
+async function handleAgenticSelect({
+  interaction,
+  store,
+  agent,
+  logger,
+}: {
+  interaction: StringSelectMenuInteraction;
+  store: OnboardingStore;
+  agent: OnboardingAgent;
+  logger: Logger;
+}): Promise<void> {
+  const session = store.getOrCreate(interaction.user.id);
+  const selected = interaction.values[0];
+
+  if (!selected) {
+    await interaction.reply({
+      flags: MessageFlags.Ephemeral,
+      content: 'No option selected.',
+    });
+    return;
+  }
+
+  store.setField(interaction.user.id, 'archetype', selected);
+
+  const actionDesc = `User selected archetype "${selected}".`;
+  store.addHistory(interaction.user.id, `User: ${actionDesc}`);
+
+  const output = await agent.turn({
+    draft: getDraftForAgent(session.draft),
+    actionDescription: actionDesc,
+    conversationHistory: store.getHistory(interaction.user.id),
+  });
+
+  store.addHistory(interaction.user.id, `Agent: ${output.message}`);
+  session.lastComponents = output.components;
+
+  await interaction.update({
+    content: `${output.message}\n${output.progress}`,
+    components: renderAgentComponents(output.components),
+  });
+}
+
+async function handleAgenticModal({
+  interaction,
+  store,
+  agent,
+  logger,
+}: {
+  interaction: ModalSubmitInteraction;
+  store: OnboardingStore;
+  agent: OnboardingAgent;
+  logger: Logger;
+}): Promise<void> {
+  const session = store.getOrCreate(interaction.user.id);
+  const modalSpec = findModalBySubmitId(session.lastComponents, interaction.customId);
+
+  if (!modalSpec) {
+    await interaction.reply({
+      flags: MessageFlags.Ephemeral,
+      content: 'Unknown modal submission.',
+    });
+    return;
+  }
+
+  // Collect field values
+  const fieldValues: Record<string, string> = {};
+  for (const field of modalSpec.fields) {
+    const value = normalizeOnboardingInput(interaction.fields.getTextInputValue(field.customId));
+    fieldValues[field.customId] = value;
+  }
+
+  // Apply to session based on the fields present
+  let actionDesc = '';
+  if (fieldValues.name !== undefined) {
+    store.setField(interaction.user.id, 'name', fieldValues.name);
+    actionDesc = `User set character name to "${fieldValues.name}".`;
+  } else if (fieldValues.pronouns !== undefined) {
+    const pronouns = fieldValues.pronouns.length > 0 ? fieldValues.pronouns : undefined;
+    store.setField(interaction.user.id, 'pronouns', pronouns ?? '');
+    actionDesc = pronouns ? `User set pronouns to "${pronouns}".` : 'User skipped pronouns.';
+  } else if (fieldValues.hook !== undefined) {
+    store.setField(interaction.user.id, 'hook', fieldValues.hook);
+    actionDesc = `User set backstory hook to "${fieldValues.hook}".`;
+  } else {
+    actionDesc = 'User submitted a modal.';
+  }
+
+  store.addHistory(interaction.user.id, `User: ${actionDesc}`);
+
+  const output = await agent.turn({
+    draft: getDraftForAgent(session.draft),
+    actionDescription: actionDesc,
+    conversationHistory: store.getHistory(interaction.user.id),
+  });
+
+  store.addHistory(interaction.user.id, `Agent: ${output.message}`);
+  session.lastComponents = output.components;
+
+  await interaction.reply({
+    flags: MessageFlags.Ephemeral,
+    content: `${output.message}\n${output.progress}`,
+    components: renderAgentComponents(output.components),
+  });
+}
+
+// --- Command registration ---
+
+async function registerCommands(
+  client: Client,
+  guildId: string | undefined,
+  logger: Logger,
+): Promise<void> {
+  if (!client.application) return;
+
+  const commands = [
+    { name: 'start-onboarding', description: 'Start the onboarding flow' },
+    { name: 'ping', description: 'Check bot liveness' },
+  ];
+
+  if (guildId) {
+    await client.application.commands.set(commands, guildId);
+    logger.info({ guildId }, 'registered guild onboarding commands');
+    return;
+  }
+
+  await client.application.commands.set(commands);
+  logger.info('registered global onboarding commands');
 }

@@ -4,7 +4,7 @@
 
 Provide a repeatable, operator-friendly checklist for validating milestone 0003 behavior in a real Discord test server with a running bot.
 
-Primary onboarding behavior and contracts are defined in `docs/discord-onboarding-and-character-creation.md`.
+Primary onboarding behavior and contracts are defined in `docs/discord-onboarding-and-character-creation.md`. Onboarding architecture is agentic (D63): markdown instructions, generic agent with shared tools, thin hardcoded boundary. The demo bot's hardcoded state machine was a proving ground for Discord interaction shapes; the run sheet validates the agentic replacement.
 
 ## Preconditions
 
@@ -155,7 +155,7 @@ Run scenarios in this order so dependencies are validated before downstream loop
 
 ## Session run log
 
-### Run 001 — 2026-04-24 (live Discord smoke)
+### Run 001 — 2026-04-24 (live Discord smoke, hardcoded demo)
 
 Environment:
 

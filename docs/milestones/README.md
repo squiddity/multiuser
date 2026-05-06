@@ -22,7 +22,8 @@ Provide a single roadmap index for milestone status, sequencing, and handoff con
    - File: `docs/milestones/0003-discord-integration-validation.md`
    - Run sheet: `docs/milestones/0003-discord-validation-run-sheet.md`
    - Status: **Active**
-   - Focus: verify milestones 0001–0002 behavior in real Discord chat interaction surfaces, including invite-driven onboarding and guided character creation.
+   - Focus: verify milestones 0001–0002 behavior in real Discord chat interaction surfaces, including agentic invite-driven onboarding and guided character creation.
+   - Architecture: onboarding is one instantiation of the general agentic pattern (markdown instructions → generic agent + tools → structured output → thin hardcoded boundary), consistent with narration and rules resolution. See D63.
    - Related spec: `docs/discord-onboarding-and-character-creation.md`
    - Interaction script: `docs/discord-onboarding-interaction-script.md`
    - Schema draft: `docs/discord-onboarding-schema-draft.md`

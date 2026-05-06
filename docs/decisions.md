@@ -489,6 +489,13 @@ Format:
 - **R** — This keeps core identity stable while allowing account-level portability and defers multi-character-in-one-shared-room UX complexity.
 - **S** — v1.
 
+### D63. Onboarding agent architecture
+
+- **Q** — should onboarding flow control be hardcoded (state machine, per-field switch statements, fixed strings) or agent-driven (markdown instructions, generic agent, tool-equipped)?
+- **D** — Agentic onboarding. The onboarding agent is one instantiation of the general pattern shared with narration (`Narrator`) and rules resolution (`AgentBackedResolver` per D52): markdown instructions as data (`content/agents/onboarding-narrator.md`), a generic agent (pi-agent-core turn loop), shared tool primitives (`render` for Discord UI, `validate` for schema checking, `retrieve` for state lookup), and a thin hardcoded boundary (TypeBox `CharacterDraft` schema validation, scope enforcement, Discord component rendering). Flow control, field ordering, and messaging are agent-driven. The agent receives the profile schema from its instructions (which fields to collect, which are required) and decides what to ask next; it recovers from validation failures conversationally. Campaign-level overrides use the same `agent-prompt` statement mechanism as the Narrator.
+- **R** — The hardcoded demo bot proved Discord interaction shapes (ephemeral replies, modals, buttons, private threads) but the field-by-field switch statements and fixed strings do not scale to campaign-specific onboarding personas, non-linear flows, or operator-authored profile schemas. The instructions-as-data pattern (already established in D52 for resolvers) makes onboarding configurable without code changes. An operator can provide a new profile schema or onboarding persona by editing markdown, not by writing TypeScript. This also keeps onboarding consistent with the broader architecture principle that agent behavior lives in markdown and security/scope invariants stay in code.
+- **S** — v1.
+
 ---
 
 ## Remaining open items
