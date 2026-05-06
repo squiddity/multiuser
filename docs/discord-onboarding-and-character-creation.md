@@ -46,12 +46,12 @@ Onboarding is one instantiation of the general agentic pattern shared across nar
 
 ### Split of responsibilities
 
-| Layer                     | What it owns                                                                   | How it's configured                                                         |
-| ------------------------- | ------------------------------------------------------------------------------ | --------------------------------------------------------------------------- |
-| **Markdown instructions** | Persona, tone, field descriptions, conversational style                        | `content/agents/onboarding-narrator.md` + campaign `agent-prompt` overrides |
-| **Agent (LLM)**           | Flow control, field ordering, messaging, validation recovery                   | Instructions + profile schema as data                                       |
-| **Tools**                 | Discord UI rendering, schema validation, state retrieval                       | Shared tool primitives, no onboarding-specific logic                        |
-| **Hardcoded boundary**    | `CharacterDraft` TypeBox schema, scope enforcement, Discord component builders | Code; the narrowest possible surface                                        |
+| Layer                     | What it owns                                                                                  | How it's configured                                                         |
+| ------------------------- | --------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------- |
+| **Markdown instructions** | Persona, tone, field descriptions, conversational style                                       | `content/agents/onboarding-narrator.md` + campaign `agent-prompt` overrides |
+| **Agent (LLM)**           | Flow control, field ordering, messaging, validation recovery                                  | Instructions + profile schema as data                                       |
+| **Tools**                 | Discord UI rendering, schema validation, state retrieval                                      | Shared tool primitives, no onboarding-specific logic                        |
+| **Hardcoded boundary**    | Only `name` in `CharacterDraft` TypeBox schema; scope enforcement; Discord component builders | Code; the narrowest possible surface                                        |
 
 ### State persistence
 

@@ -1,8 +1,8 @@
 # Milestone 0003 — Discord Integration and UX Validation
 
-## Status (2026-04-24)
+## Status (2026-05-06)
 
-**Active — kickoff after milestone 0002 closure.**
+\*\*Active — substantial progress toward identity bootstrap, onboarding-backed player definition, room/channel projection, and /say gating. Full end-to-end flow validated in live Discord.
 
 ## Goal
 
@@ -95,16 +95,17 @@ Discord status/thinking UX research notes are captured in `docs/research-discord
 
 The demo bot's hardcoded state machine has been replaced with the agentic pattern:
 
-- ✅ **Markdown instructions** — `content/agents/onboarding-narrator.md` defining innkeeper persona, profile schema (name, pronouns, archetype, hook), structured JSON output format (`{ message, progress, components }` / `{ message, complete: true, draft }`), component spec vocabulary, action key reference, validation recovery instructions.
+- ✅ **Markdown instructions** — `content/agents/onboarding-narrator.md` defining innkeeper persona, profile schema (name only hardcoded; pronouns, archetype, hook are agent-defined profile fields), structured JSON output format (`{ message, progress, components }` / `{ message, complete: true, draft }`), component spec vocabulary, action key reference, validation recovery instructions.
 - ✅ **Generic agent** (`src/agents/onboarding-agent.ts`) — loads markdown instructions, builds prompts from conversation history + draft state, calls `LlmRuntime.generate()`, parses JSON output with fallback recovery. Stateless; each Discord interaction is a fresh turn with full context.
 - ✅ **Shared tools:**
   - `src/resolvers/tools/render.ts` — component spec types (ButtonSpec, SelectSpec, ModalSpec, PrivateThreadSpec) and Discord.js rendering functions.
   - `src/resolvers/tools/validate.ts` — TypeBox `CharacterDraft` validation wrapper with per-field structured errors for conversational recovery.
 - ✅ **Thin adapter** (`src/adapters/discord/demo-bot.ts`) — rewritten to delegate all flow decisions to `OnboardingAgent`. Adapter serializes user interactions into text descriptions, renders agent component specs as Discord UI, handles modal dispatch from component specs, runs validation on agent completion, feeds validation errors back conversationally.
+- Interaction timeouts mitigated via `deferReply()`/`update()` before blocking LLM calls (slash commands, modals, buttons, selects); visual feedback via immediate message update with `_Thinking..._` / `_Registering your character..._` text.
 - ✅ **State abstraction** (`src/store/workflow-sessions.ts`, `src/adapters/discord/onboarding-store.ts`) — onboarding now sits on a generic workflow session store built on `session`-scope `kind=governance` statements. The Discord demo bot still exposes an `OnboardingStore`, but persistence is no longer onboarding-specific: workflow identity is metadata (`workflowType`, `workflowEventType`), and onboarding is simply the first consumer.
 - ✅ **Tests** — onboarding coverage now includes unit coverage for the onboarding wrapper plus unit/integration coverage for the generic workflow session substrate:
   - `test/unit/onboarding-schemas.test.ts` (17 tests) — `CharacterDraft` validation, `normalizeOnboardingInput`, `isValidOnboardingTransition`
-  - `test/unit/onboarding-validate.test.ts` (13 tests) — `validateCharacterDraft` complete/incomplete/invalid drafts, per-field errors, formatted output
+  - `test/unit/onboarding-validate.test.ts` (10 tests) — `validateCharacterDraft` complete/incomplete/invalid drafts, per-field errors, formatted output (only `name` + `profile` are hardcoded)
   - `test/unit/onboarding-render.test.ts` (13 tests) — `renderComponentSpec` for all component types, modal lookup, extraction
   - `test/unit/onboarding-store.test.ts` (18 tests) — `InMemoryOnboardingStore` CRUD, conversation history, field setting, merge, component caching, confirm, reset, defensive copies
   - `test/unit/workflow-session-store.test.ts` (4 tests) — generic in-memory workflow session creation, updates, copy semantics, reset
@@ -168,6 +169,7 @@ A live Discord validation pass covered the currently implemented `/say` path:
 - [ ] Drift and reconciliation fault tests.
 - [ ] Permission-boundary hard checks.
 - [ ] Replace the literal `/say` echo with an agentic, visibility-aware action-echo path that can choose public vs. private acknowledgment and render it in campaign/narrator tone.
+- [ ] Refactor `src/adapters/discord/demo-bot.ts` interaction handlers to reduce duplication of `update-LLM-editReply` pattern; extract a shared helper that handles defer/feedback/LLM/error uniformly across buttons, selects, modals, and slash commands.
 
 ## Out of scope
 

@@ -23,26 +23,15 @@ export const OnboardingActionKey = T.Union([
   T.Literal('onboard.cancel'),
   T.Literal('onboard.name.open'),
   T.Literal('onboard.name.submit'),
-  T.Literal('onboard.pronouns.open'),
-  T.Literal('onboard.pronouns.submit'),
   T.Literal('onboard.profile.select'),
-  T.Literal('onboard.hook.open'),
-  T.Literal('onboard.hook.submit'),
   T.Literal('onboard.review.open'),
   T.Literal('onboard.confirm'),
   T.Literal('onboard.edit.name'),
-  T.Literal('onboard.edit.pronouns'),
   T.Literal('onboard.edit.profile'),
-  T.Literal('onboard.edit.hook'),
   T.Literal('onboard.private-thread.open'),
 ]);
 
-export const OnboardingFieldKey = T.Union([
-  T.Literal('name'),
-  T.Literal('pronouns'),
-  T.Literal('profile'),
-  T.Literal('hook'),
-]);
+export const OnboardingFieldKey = T.Union([T.Literal('name'), T.Literal('profile')]);
 
 export const ProfileFieldValues = T.Record(T.String({ minLength: 1 }), T.String({ minLength: 1 }));
 
@@ -64,16 +53,14 @@ export const RoutingDecisionSource = T.Union([
 ]);
 
 // --- Character draft fields ---
+// Only `name` is hardcoded. All other fields (pronouns, hook, archetype, etc.)
+// are agent-defined keys in the flexible `profile` Record.
 
 export const CharacterName = T.String({ minLength: 2, maxLength: 40 });
-export const CharacterPronouns = T.String({ minLength: 0, maxLength: 60 });
-export const CharacterHook = T.String({ minLength: 10, maxLength: 280 });
 
 export const CharacterDraft = T.Object({
   name: CharacterName,
-  pronouns: T.Optional(CharacterPronouns),
   profile: ProfileFieldValues,
-  hook: CharacterHook,
 });
 
 // --- Interaction records ---

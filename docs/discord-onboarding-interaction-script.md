@@ -258,25 +258,21 @@ Use opaque custom IDs mapped server-side. The backend resolves each ID to an int
 - `onboard.cancel`
 - `onboard.name.open`
 - `onboard.name.submit`
-- `onboard.pronouns.open`
-- `onboard.pronouns.submit`
 - `onboard.profile.select`
-- `onboard.hook.open`
-- `onboard.hook.submit`
 - `onboard.review.open`
 - `onboard.confirm`
 - `onboard.edit.name`
-- `onboard.edit.pronouns`
 - `onboard.edit.profile`
-- `onboard.edit.hook`
 - `onboard.private-thread.open`
+
+### Profile field modals (agent-defined)
+
+Profile fields (pronouns, hook, and any others the agent decides to collect) use the field name as the modal's customId. For example, a pronouns modal uses `customId: "pronouns"` and field `customId: "pronouns"`. See `content/agents/onboarding-narrator.md` for the modal spec pattern.
 
 ### Field key enum
 
-- `name`
-- `pronouns`
-- `profile`
-- `hook`
+- `name` (hardcoded)
+- `profile` (agent-defined keys; pronouns, hook, archetype all live here)
 
 ### Example profile field values (demo only)
 
@@ -288,10 +284,8 @@ Use opaque custom IDs mapped server-side. The backend resolves each ID to an int
 
 ### Validation constraints
 
-- `name`: string, trimmed, length `2..40`
-- `pronouns`: string, trimmed, length `0..60` (optional)
-- `hook`: string, trimmed, length `10..280`
-- `profile`: key/value entries validated against active onboarding configuration
+- `name`: string, trimmed, length `2..40` (hardcoded)
+- `profile`: non-empty Record of string-to-string entries; agent-defined keys carry their own constraints from the markdown instructions
 
 ### Escalation threshold constant
 
@@ -314,28 +308,24 @@ Use opaque custom IDs mapped server-side. The backend resolves each ID to an int
   - Button: `Set name` → `onboard.name.open` (Primary)
   - Modal submit action: `onboard.name.submit`
 
-- **S3 pronouns/display preference**
-  - Buttons:
-    - `Set preference` → `onboard.pronouns.open` (Secondary)
-    - `Skip` → `onboard.continue` (Secondary)
-  - Modal submit action: `onboard.pronouns.submit`
+- **S3 pronouns/display preference** (agent-defined)
+  - Agent may present a "Set pronouns" modal button (customId e.g. `"pronouns.open"`) and a "Skip" button
+  - Modal submit uses the field name as customId (e.g. `customId: "pronouns"`)
 
-- **S4 profile field**
+- **S4 profile field** (agent/rules-defined)
   - Select custom id: `onboard.profile.select`
   - Allowed values: profile field options from onboarding config only
 
-- **S5 hook**
-  - Button: `Add hook` → `onboard.hook.open` (Primary)
-  - Modal submit action: `onboard.hook.submit`
+- **S5 backstory hook** (agent-defined)
+  - Agent may present an "Add hook" modal button (customId e.g. `"hook.open"`)
+  - Modal submit uses the field name as customId (e.g. `customId: "hook"`)
   - Optional button when needed: `Open private thread` → `onboard.private-thread.open` (Secondary)
 
 - **S6 review/confirm**
   - Button: `Confirm character` → `onboard.confirm` (Success)
   - Select/menu or buttons for edit:
     - `onboard.edit.name`
-    - `onboard.edit.pronouns`
     - `onboard.edit.profile`
-    - `onboard.edit.hook`
   - Button: `Cancel onboarding` → `onboard.cancel` (Danger)
 
 ### Server-side interaction record (minimum)
