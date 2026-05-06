@@ -55,12 +55,14 @@ Onboarding is one instantiation of the general agentic pattern shared across nar
 
 ### State persistence
 
-Onboarding session state lives in the **statement store**, not in-memory:
+Onboarding session state lives in the **statement store**, not in-memory, by using the generic workflow-session pattern described in `docs/workflow-session-store.md`:
 
-- Session lifecycle events (invited → joined → linked → … → completed) are `kind=governance` statements with onboarding scope
-- Character drafts are written as structured `fields` on session statements
-- The agent is stateless — state reconstruction is deterministic from statements
-- This survives process restarts and enables interrupted-session resumption (F3)
+- The active onboarding session is stored in **`session` scope**; onboarding is a `workflowType`, not a special scope kind.
+- Each user-facing onboarding event appends a `kind=governance` statement with `workflowType=onboarding`, `workflowEventType`, and the latest structured `state` snapshot.
+- The onboarding state snapshot carries draft fields, step, retry counts, conversation history, and cached component specs.
+- Character draft values are stored as structured fields on those session statements rather than hidden adapter memory.
+- The agent is stateless — state reconstruction is deterministic from statements.
+- This survives process restarts and enables interrupted-session resumption (F3).
 
 Concrete message-by-message interaction script lives in `docs/discord-onboarding-interaction-script.md`.
 
@@ -276,7 +278,7 @@ Onboarding session states:
 Requirements:
 
 - Transitions are append-only records in the statement store.
-- Replaying transitions reconstructs onboarding status deterministically.
+- Replaying the session-scope event stream for `workflowType=onboarding` reconstructs onboarding status deterministically.
 - The agent is stateless; handlers are idempotent per transition key.
 - Session state persists across process restarts.
 

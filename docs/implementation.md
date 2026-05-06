@@ -33,6 +33,7 @@ Fix the concrete stack, component topology, and code layout for v1. Everything a
 - **Statement store stays authoritative.** Canonical memory, scopes, provenance, and governance decisions remain in Postgres through our own store contracts.
 - **Markdown instructions are first-class configuration artifacts.** Agent behavior and resolver policy live in markdown data where possible; security and scope invariants stay in code.
 - **Unified agentic pattern.** Narration, rules resolution, and onboarding share the same architecture: markdown instructions → generic agent (pi-agent-core turn loop) + shared tool primitives → structured output → thin hardcoded boundary (schema validation, scope enforcement, platform rendering). The agent is the inference engine; instructions are data; tools are shared; the hardcoded boundary is the narrowest possible surface.
+- **Interruptible workflow state uses a generic session substrate.** Private multi-turn workflows persist in `session` scope through a reusable workflow session store; workflow identity lives in statement metadata (`workflowType`, `workflowEventType`), not in ad hoc new scope kinds. Onboarding is the first consumer of that pattern.
 - **Future option:** selective adoption of `pi-coding-agent` remains open (especially session compaction hooks/extensions) without changing canonical-store authority.
 
 ## Component topology
@@ -113,6 +114,7 @@ src/
     entities.ts           # structured entity ops
     mappings.ts           # room↔channel, role↔discord role, user↔discord user
     statement-store.ts    # Postgres StatementStore adapter
+    workflow-sessions.ts  # generic session-scope persistence for interruptible workflows
     migrations/
   adapters/
     platform.ts         # PlatformAdapter interface

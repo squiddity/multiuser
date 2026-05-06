@@ -65,7 +65,7 @@ The bot currently provides:
 - `/ping`
 - `/start-onboarding` with ephemeral-first flow
 - private-thread escalation button
-- in-memory onboarding session state (resets on process restart)
+- statement-backed onboarding session state via the generic workflow session store (persists across process restart)
 
 ## First successful local run (2026-04-24)
 

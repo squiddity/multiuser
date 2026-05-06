@@ -69,7 +69,7 @@ Message-level interaction flow is defined in `docs/discord-onboarding-interactio
 Type-level onboarding contract draft is in `docs/discord-onboarding-schema-draft.md`.
 Discord status/thinking UX research notes are captured in `docs/research-discord-thinking-and-status-patterns.md`.
 
-## Progress snapshot (2026-04-24 through 2026-05-05)
+## Progress snapshot (2026-04-24 through 2026-05-06)
 
 ### Completed (hardcoded demo phase)
 
@@ -101,17 +101,19 @@ The demo bot's hardcoded state machine has been replaced with the agentic patter
   - `src/resolvers/tools/render.ts` — component spec types (ButtonSpec, SelectSpec, ModalSpec, PrivateThreadSpec) and Discord.js rendering functions.
   - `src/resolvers/tools/validate.ts` — TypeBox `CharacterDraft` validation wrapper with per-field structured errors for conversational recovery.
 - ✅ **Thin adapter** (`src/adapters/discord/demo-bot.ts`) — rewritten to delegate all flow decisions to `OnboardingAgent`. Adapter serializes user interactions into text descriptions, renders agent component specs as Discord UI, handles modal dispatch from component specs, runs validation on agent completion, feeds validation errors back conversationally.
-- ✅ **State abstraction** (`src/adapters/discord/onboarding-store.ts`) — `OnboardingStore` interface + `InMemoryOnboardingStore` with conversation history tracking. Clean separation from the statement store; production persistence via statements is a deferred follow-up.
-- ✅ **Unit tests** — 72 new tests across 5 files covering onboarding schemas, validate, render, store, and agent output parsing with mocked LLM:
+- ✅ **State abstraction** (`src/store/workflow-sessions.ts`, `src/adapters/discord/onboarding-store.ts`) — onboarding now sits on a generic workflow session store built on `session`-scope `kind=governance` statements. The Discord demo bot still exposes an `OnboardingStore`, but persistence is no longer onboarding-specific: workflow identity is metadata (`workflowType`, `workflowEventType`), and onboarding is simply the first consumer.
+- ✅ **Tests** — onboarding coverage now includes unit coverage for the onboarding wrapper plus unit/integration coverage for the generic workflow session substrate:
   - `test/unit/onboarding-schemas.test.ts` (17 tests) — `CharacterDraft` validation, `normalizeOnboardingInput`, `isValidOnboardingTransition`
   - `test/unit/onboarding-validate.test.ts` (13 tests) — `validateCharacterDraft` complete/incomplete/invalid drafts, per-field errors, formatted output
   - `test/unit/onboarding-render.test.ts` (13 tests) — `renderComponentSpec` for all component types, modal lookup, extraction
-  - `test/unit/onboarding-store.test.ts` (16 tests) — `InMemoryOnboardingStore` CRUD, conversation history, field setting, merge, confirm, reset
+  - `test/unit/onboarding-store.test.ts` (18 tests) — `InMemoryOnboardingStore` CRUD, conversation history, field setting, merge, component caching, confirm, reset, defensive copies
+  - `test/unit/workflow-session-store.test.ts` (4 tests) — generic in-memory workflow session creation, updates, copy semantics, reset
   - `test/unit/onboarding-agent.test.ts` (13 tests) — `OnboardingAgent.turn()` valid/invalid/malformed JSON, prompt content verification, validation errors in prompt, fallback recovery
+  - `test/integration/onboarding-store.test.ts` (2 tests) — onboarding wrapper restart-safe reconstruction and reset semantics
+  - `test/integration/workflow-session-store.test.ts` (2 tests) — generic statement-backed workflow session reconstruction and reset semantics
 
 ### Still to do
 
-- [ ] Persist onboarding session state as statements (replace `InMemoryOnboardingStore` — requires schema decisions for onboarding statement kinds/scopes).
 - [ ] Run full run-sheet validation against the agentic flow (live Discord bot test).
 - [ ] Room and role projection checks (channels, permissions, mappings).
 - [ ] Core party narration loop in Discord.

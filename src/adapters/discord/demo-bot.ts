@@ -16,7 +16,7 @@ import {
 } from 'discord.js';
 import type { Logger } from 'pino';
 import { normalizeOnboardingInput, type CharacterDraft } from '../../core/onboarding.js';
-import { InMemoryOnboardingStore, type OnboardingStore } from './onboarding-store.js';
+import { StatementBackedOnboardingStore, type OnboardingStore } from './onboarding-store.js';
 import { createOnboardingAgent, type OnboardingAgent } from '../../agents/onboarding-agent.js';
 import {
   renderComponentSpecs,
@@ -112,7 +112,7 @@ export async function startDiscordDemoBot({
     intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildMessages],
   });
 
-  const store: OnboardingStore = new InMemoryOnboardingStore();
+  const store: OnboardingStore = new StatementBackedOnboardingStore();
   const agent: OnboardingAgent = createOnboardingAgent({
     modelSpec: env.DEFAULT_MODEL_SPEC || DEFAULT_MODEL,
   });
@@ -130,10 +130,11 @@ export async function startDiscordDemoBot({
       }
 
       if (interaction.isChatInputCommand() && interaction.commandName === 'start-onboarding') {
-        store.getOrCreate(interaction.user.id);
+        await store.getOrCreate(interaction.user.id);
 
         const output = await agent.start(interaction.user.id);
-        store.addHistory(interaction.user.id, `Agent: ${output.message}`);
+        await store.addHistory(interaction.user.id, `Agent: ${output.message}`);
+        await store.setLastComponents(interaction.user.id, output.components);
 
         await interaction.reply({
           flags: MessageFlags.Ephemeral,
@@ -193,7 +194,7 @@ async function handleAgenticButton({
   agent: OnboardingAgent;
   logger: Logger;
 }): Promise<void> {
-  const session = store.getOrCreate(interaction.user.id);
+  const session = await store.getOrCreate(interaction.user.id);
 
   // If the button opens a modal, show it
   const modalSpec = findModalByOpenButton(session.lastComponents, interaction.customId);
@@ -205,7 +206,7 @@ async function handleAgenticButton({
 
   // Handle cancel directly (no agent needed)
   if (interaction.customId === 'onboard.cancel') {
-    store.reset(interaction.user.id);
+    await store.reset(interaction.user.id);
     await interaction.update({
       content: 'Onboarding canceled. Run /start-onboarding to begin again.',
       components: [],
@@ -217,8 +218,11 @@ async function handleAgenticButton({
   if (interaction.customId === 'onboard.confirm') {
     const validation = validateCharacterDraft(getDraftForAgent(session.draft));
     if (validation.valid) {
-      store.mergeDraft(interaction.user.id, validation.draft as unknown as Record<string, unknown>);
-      store.confirm(interaction.user.id);
+      await store.mergeDraft(
+        interaction.user.id,
+        validation.draft as unknown as Record<string, unknown>,
+      );
+      await store.confirm(interaction.user.id);
 
       await interaction.update({
         content: [
@@ -238,17 +242,17 @@ async function handleAgenticButton({
 
     // Validation failed — feed errors back to agent
     const errors = formatValidationErrors(validation);
-    store.addHistory(interaction.user.id, `(Validation failed: ${errors})`);
+    await store.addHistory(interaction.user.id, `(Validation failed: ${errors})`);
 
     const output = await agent.turn({
       draft: getDraftForAgent(session.draft),
       actionDescription: describeButtonClick(interaction.customId),
-      conversationHistory: store.getHistory(interaction.user.id),
+      conversationHistory: await store.getHistory(interaction.user.id),
       validationErrors: errors,
     });
 
-    store.addHistory(interaction.user.id, `Agent: ${output.message}`);
-    session.lastComponents = output.components;
+    await store.addHistory(interaction.user.id, `Agent: ${output.message}`);
+    await store.setLastComponents(interaction.user.id, output.components);
 
     await interaction.update({
       content: `${output.message}\n${output.progress}`,
@@ -288,16 +292,16 @@ async function handleAgenticButton({
 
   // General button: serialize, send to agent
   const actionDesc = describeButtonClick(interaction.customId);
-  store.addHistory(interaction.user.id, `User: ${actionDesc}`);
+  await store.addHistory(interaction.user.id, `User: ${actionDesc}`);
 
   const output = await agent.turn({
     draft: getDraftForAgent(session.draft),
     actionDescription: actionDesc,
-    conversationHistory: store.getHistory(interaction.user.id),
+    conversationHistory: await store.getHistory(interaction.user.id),
   });
 
-  store.addHistory(interaction.user.id, `Agent: ${output.message}`);
-  session.lastComponents = output.components;
+  await store.addHistory(interaction.user.id, `Agent: ${output.message}`);
+  await store.setLastComponents(interaction.user.id, output.components);
 
   await interaction.update({
     content: `${output.message}\n${output.progress}`,
@@ -316,7 +320,7 @@ async function handleAgenticSelect({
   agent: OnboardingAgent;
   logger: Logger;
 }): Promise<void> {
-  const session = store.getOrCreate(interaction.user.id);
+  let session = await store.getOrCreate(interaction.user.id);
   const selected = interaction.values[0];
 
   if (!selected) {
@@ -327,19 +331,19 @@ async function handleAgenticSelect({
     return;
   }
 
-  store.setField(interaction.user.id, 'archetype', selected);
+  session = await store.setField(interaction.user.id, 'archetype', selected);
 
   const actionDesc = `User selected archetype "${selected}".`;
-  store.addHistory(interaction.user.id, `User: ${actionDesc}`);
+  await store.addHistory(interaction.user.id, `User: ${actionDesc}`);
 
   const output = await agent.turn({
     draft: getDraftForAgent(session.draft),
     actionDescription: actionDesc,
-    conversationHistory: store.getHistory(interaction.user.id),
+    conversationHistory: await store.getHistory(interaction.user.id),
   });
 
-  store.addHistory(interaction.user.id, `Agent: ${output.message}`);
-  session.lastComponents = output.components;
+  await store.addHistory(interaction.user.id, `Agent: ${output.message}`);
+  await store.setLastComponents(interaction.user.id, output.components);
 
   await interaction.update({
     content: `${output.message}\n${output.progress}`,
@@ -358,7 +362,7 @@ async function handleAgenticModal({
   agent: OnboardingAgent;
   logger: Logger;
 }): Promise<void> {
-  const session = store.getOrCreate(interaction.user.id);
+  let session = await store.getOrCreate(interaction.user.id);
   const modalSpec = findModalBySubmitId(session.lastComponents, interaction.customId);
 
   if (!modalSpec) {
@@ -379,29 +383,29 @@ async function handleAgenticModal({
   // Apply to session based on the fields present
   let actionDesc = '';
   if (fieldValues.name !== undefined) {
-    store.setField(interaction.user.id, 'name', fieldValues.name);
+    session = await store.setField(interaction.user.id, 'name', fieldValues.name);
     actionDesc = `User set character name to "${fieldValues.name}".`;
   } else if (fieldValues.pronouns !== undefined) {
     const pronouns = fieldValues.pronouns.length > 0 ? fieldValues.pronouns : undefined;
-    store.setField(interaction.user.id, 'pronouns', pronouns ?? '');
+    session = await store.setField(interaction.user.id, 'pronouns', pronouns ?? '');
     actionDesc = pronouns ? `User set pronouns to "${pronouns}".` : 'User skipped pronouns.';
   } else if (fieldValues.hook !== undefined) {
-    store.setField(interaction.user.id, 'hook', fieldValues.hook);
+    session = await store.setField(interaction.user.id, 'hook', fieldValues.hook);
     actionDesc = `User set backstory hook to "${fieldValues.hook}".`;
   } else {
     actionDesc = 'User submitted a modal.';
   }
 
-  store.addHistory(interaction.user.id, `User: ${actionDesc}`);
+  await store.addHistory(interaction.user.id, `User: ${actionDesc}`);
 
   const output = await agent.turn({
     draft: getDraftForAgent(session.draft),
     actionDescription: actionDesc,
-    conversationHistory: store.getHistory(interaction.user.id),
+    conversationHistory: await store.getHistory(interaction.user.id),
   });
 
-  store.addHistory(interaction.user.id, `Agent: ${output.message}`);
-  session.lastComponents = output.components;
+  await store.addHistory(interaction.user.id, `Agent: ${output.message}`);
+  await store.setLastComponents(interaction.user.id, output.components);
 
   await interaction.reply({
     flags: MessageFlags.Ephemeral,
