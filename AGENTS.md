@@ -12,6 +12,8 @@
 
 ## Pre-commit & Pre-push checklist
 
+**Working agreement:** after any major implementation step that has been validated locally (typecheck/tests/format as relevant), commit and push promptly rather than letting large validated changes sit unpushed.
+
 **Run these before every commit and push**:
 
 ```bash
