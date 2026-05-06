@@ -2,13 +2,24 @@ import { randomUUID } from 'node:crypto';
 import { loadAgentPrompt } from '../store/content.js';
 import { getRoom } from '../store/rooms.js';
 import { listActiveSteeringFor } from '../store/steering.js';
-import { createPiAiLlmRuntime } from '../models/pi-runtime.js';
+import {
+  createContextAssembler,
+  type ContextAssembler,
+  type ContextStatement,
+} from '../core/context-assembler.js';
 import { createStatementStore } from '../store/statement-store.js';
+import type { StatementStore, StatementStoreRow } from '../core/statement-store.js';
 import { env } from '../config/env.js';
 import { logger } from '../config/logger.js';
+
+import type { SessionAwareRuntime } from '../models/session-runtime.js';
+import { getSessionRuntime, createPiAiLlmRuntime } from '../models/pi-runtime.js';
 import type { LlmRuntime } from '../core/llm-runtime.js';
-import type { StatementStore } from '../core/statement-store.js';
 import type { SteeringCandidate } from '../core/briefing-steering.js';
+
+// ---------------------------------------------------------------------------
+// Types
+// ---------------------------------------------------------------------------
 
 export type NarratorOutputKind = 'narration' | 'pose' | 'invention';
 
@@ -26,28 +37,54 @@ export interface NarratorConfig {
   modelSpec: string;
   campaignId?: string | null;
   adminRoomId?: string | null;
+  /** Session-aware runtime (preferred) or fallback one-shot runtime */
+  sessionRuntime?: SessionAwareRuntime;
   llmRuntime?: LlmRuntime;
   statementStore?: StatementStore;
 }
 
+// ---------------------------------------------------------------------------
+// Constants
+// ---------------------------------------------------------------------------
+
 const EMPTY_OUTPUT_FALLBACK =
   'The world stirs, but the answer catches in the wind before it can be spoken.';
 
+// ---------------------------------------------------------------------------
+// Narrator
+// ---------------------------------------------------------------------------
+
 export class Narrator {
   private readonly config: NarratorConfig;
-  private readonly llmRuntime: LlmRuntime;
+  private readonly sessionRuntime: SessionAwareRuntime;
+  private readonly fallbackLlmRuntime: LlmRuntime;
   private readonly statementStore: StatementStore;
+  private readonly assembler: ContextAssembler;
 
   constructor(config: NarratorConfig) {
     this.config = config;
-    this.llmRuntime = config.llmRuntime ?? createPiAiLlmRuntime();
+    this.sessionRuntime = config.sessionRuntime ?? getSessionRuntime();
+    this.fallbackLlmRuntime = config.llmRuntime ?? createPiAiLlmRuntime();
     this.statementStore = config.statementStore ?? createStatementStore();
+    this.assembler = createContextAssembler();
   }
 
+  /**
+   * Compose a narrative response for the given room and player action.
+   *
+   * Uses the session-aware runtime when possible. If the runtime rejects the
+   * session-aware call (e.g., session destroyed mid-turn), falls back to the
+   * one-shot PiAiLlmRuntime.generate().
+   */
   async compose(roomId: string, userId: string, recentContent?: string): Promise<NarratorOutput> {
     const prompt = await loadAgentPrompt('narrator', this.config.campaignId ?? null);
     const context = await this.buildContext(roomId, userId);
-    const userPrompt = this.buildUserPrompt(context, recentContent);
+    const assembly = this.assembler.assemble({
+      statements: context.statements as ContextStatement[],
+      steering: context.activeSteering,
+      playerAction: recentContent ?? '',
+      playerName: context.playerName ?? undefined,
+    });
 
     if (env.LOG_LLM_INPUT) {
       logger.info(
@@ -56,25 +93,27 @@ export class Narrator {
           userId,
           modelSpec: this.config.modelSpec,
           systemPrompt: prompt.content,
-          userPrompt,
+          userPrompt: assembly.userPrompt,
+          contextStats: assembly.stats,
           activeSteering: context.activeSteering.map((s) => ({
             id: s.id,
             intent: s.fields.intent,
             direction: s.fields.direction,
           })),
         },
-        'narrator: llm input',
+        'narrator: session turn context',
       );
     }
 
     try {
-      const llmRequestId = randomUUID();
-      const result = await this.llmRuntime.generate({
+      // Try session-aware first
+      const result = await this.sessionRuntime.generateInSession({
         modelSpec: this.config.modelSpec,
         systemPrompt: prompt.content,
-        prompt: userPrompt,
+        sessionId: this.sessionIdFor(roomId),
+        prompt: assembly.userPrompt,
         metadata: {
-          requestId: llmRequestId,
+          requestId: randomUUID(),
           caller: 'narrator.compose',
           roomId,
           userId,
@@ -87,23 +126,60 @@ export class Narrator {
           userId,
           modelSpec: this.config.modelSpec,
           responseChars: result.text.length,
-          responsePreview: result.text.slice(0, 240),
+          usage: result.usage
+            ? {
+                inputTokens: result.usage.inputTokens,
+                outputTokens: result.usage.outputTokens,
+                cacheRead: result.usage.cacheRead,
+                totalTokens: result.usage.totalTokens,
+              }
+            : undefined,
+          tokensPerSecond: result.tokensPerSecond?.toFixed(1),
+          turnStats: assembly.stats,
         },
-        'narrator: llm output received',
+        'narrator: session turn success',
       );
 
-      const parsed = this.parseOutput(result.text);
-      return parsed;
-    } catch (err) {
-      logger.error({ err, roomId, userId }, 'narrator: compose failed');
+      return this.parseOutput(result.text);
+    } catch (sessionErr) {
+      logger.warn(
+        { err: sessionErr, roomId, userId },
+        'narrator: session-aware turn failed; falling back to one-shot',
+      );
 
-      return {
-        kind: 'narration',
-        content: 'The world falls silent. Something interrupts the narrative flow.',
-      };
+      // Fallback: one-shot generation
+      try {
+        const fallbackResult = await this.fallbackLlmRuntime.generate({
+          modelSpec: this.config.modelSpec,
+          systemPrompt: prompt.content,
+          prompt: assembly.userPrompt,
+          metadata: {
+            requestId: randomUUID(),
+            caller: 'narrator.compose.fallback',
+            roomId,
+            userId,
+          },
+        });
+
+        logger.info(
+          { roomId, userId, responseChars: fallbackResult.text.length },
+          'narrator: fallback turn success',
+        );
+
+        return this.parseOutput(fallbackResult.text);
+      } catch (fallbackErr) {
+        logger.error({ err: fallbackErr, roomId, userId }, 'narrator: fallback also failed');
+        return {
+          kind: 'narration',
+          content: EMPTY_OUTPUT_FALLBACK,
+        };
+      }
     }
   }
 
+  /**
+   * Emit the narrator's output as a statement and optionally as an open question.
+   */
   async emit(roomId: string, output: NarratorOutput, sources?: string[]): Promise<string[]> {
     const room = await getRoom(roomId);
     if (!room) throw new Error(`room not found: ${roomId}`);
@@ -135,16 +211,38 @@ export class Narrator {
     return ids;
   }
 
+  // -----------------------------------------------------------------------
+  // Internals
+  // -----------------------------------------------------------------------
+
+  /**
+   * Build a stable session ID from the room ID.
+   */
+  private sessionIdFor(roomId: string): string {
+    return `narrator:${roomId}`;
+  }
+
+  /**
+   * Retrieve context from the statement store and active steering.
+   */
   private async buildContext(
     roomId: string,
     userId: string,
   ): Promise<{
-    statements: string;
+    statements: ContextStatement[];
     worldCanon: string;
     partyExperience: string;
     activeSteering: SteeringCandidate[];
+    playerName?: string;
   }> {
     const rows = await this.statementStore.retrieveForUserRoom(userId, roomId, { limit: 20 });
+
+    const statements: ContextStatement[] = rows.map((r: StatementStoreRow) => ({
+      kind: r.kind,
+      authorId: r.authorId,
+      content: r.content,
+      approxTokens: Math.ceil(r.content.length / 4),
+    }));
 
     const worldCanon = rows
       .filter((r) => r.scopeType === 'world')
@@ -156,64 +254,21 @@ export class Narrator {
       .map((r) => `[${r.kind}] ${r.content}`)
       .join('\n\n');
 
-    const recentStatements = rows
-      .slice(0, 10)
-      .map((r) => `[${r.authorId}] ${r.content}`)
-      .join('\n');
-
     const activeSteering = this.config.adminRoomId
       ? await listActiveSteeringFor(roomId, this.config.adminRoomId)
       : [];
 
     return {
-      statements: recentStatements,
+      statements,
       worldCanon: worldCanon || '(no world canon yet)',
       partyExperience: partyExperience || '(no party experience yet)',
       activeSteering,
     };
   }
 
-  private buildUserPrompt(
-    context: {
-      statements: string;
-      worldCanon: string;
-      partyExperience: string;
-      activeSteering: SteeringCandidate[];
-    },
-    recentContent?: string,
-  ): string {
-    let prompt = `## Recent statements in this session\n${context.statements}\n\n`;
-    prompt += `## World canon\n${context.worldCanon}\n\n`;
-    prompt += `## This party's experience\n${context.partyExperience}\n\n`;
-
-    if (context.activeSteering.length > 0) {
-      prompt += `## Active GM steering (apply to this turn)\n`;
-      for (const s of context.activeSteering) {
-        const bits: string[] = [`intent=${s.fields.intent}`];
-        if (s.fields.tone) bits.push(`tone: ${s.fields.tone}`);
-        if (s.fields.constraints && s.fields.constraints.length > 0) {
-          bits.push(`constraints: ${s.fields.constraints.join('; ')}`);
-        }
-        bits.push(`direction: ${s.fields.direction}`);
-        prompt += `- ${bits.join(' | ')}\n`;
-      }
-      prompt += `\n`;
-    }
-
-    if (recentContent) {
-      prompt += `## Player action\n${recentContent}\n\n`;
-    }
-
-    prompt += `Respond to continue the narrative. Your response should be JSON with fields:
-- kind: "narration" | "pose" | "invention"
-- content: your response text
-- (only for invention) openQuestion: { subject: string, candidate: string, routedTo: string }
-
-Return valid JSON only, no additional text.`;
-
-    return prompt;
-  }
-
+  /**
+   * Parse a JSON response from the narrator.
+   */
   private parseOutput(text: string): NarratorOutput {
     const trimmed = text.trim();
     if (!trimmed) {
@@ -266,6 +321,10 @@ Return valid JSON only, no additional text.`;
     }
   }
 }
+
+// ---------------------------------------------------------------------------
+// Factory
+// ---------------------------------------------------------------------------
 
 export function createNarrator(config: NarratorConfig): Narrator {
   return new Narrator(config);

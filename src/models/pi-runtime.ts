@@ -48,7 +48,7 @@ export function onLlmTelemetry(listener: TelemetryListener): () => void {
   return () => telemetryListeners.delete(listener);
 }
 
-function emitTelemetry(event: LlmTelemetryEvent): void {
+export function emitTelemetry(event: LlmTelemetryEvent): void {
   for (const listener of telemetryListeners) {
     try {
       listener(event);
@@ -98,7 +98,7 @@ async function runSerialized<T>(fn: () => Promise<T>): Promise<T> {
   }
 }
 
-function parseModelSpec(spec: string): { provider: string; modelId: string } {
+export function parseModelSpec(spec: string): { provider: string; modelId: string } {
   const idx = spec.indexOf(':');
   if (idx < 0) {
     throw new Error(`model spec must be "<provider>:<slug>": got "${spec}"`);
@@ -183,7 +183,7 @@ function openRouterCostFor(modelId: string): {
   return { input: 0.1, output: 0.4, cacheRead: 0.05, cacheWrite: 0.1 };
 }
 
-function resolveModel(spec: string): Model<any> {
+export function resolveModel(spec: string): Model<any> {
   const { provider, modelId } = parseModelSpec(spec);
   const localProvider = env.LOCAL_MODEL_PROVIDER || 'local';
 
@@ -268,7 +268,7 @@ function resolveModel(spec: string): Model<any> {
   return resolved;
 }
 
-function resolveApiKey(provider: string): string | undefined {
+export function resolveApiKey(provider: string): string | undefined {
   const localProvider = env.LOCAL_MODEL_PROVIDER || 'local';
   if (env.LOCAL_MODEL_BASE_URL && provider === localProvider) {
     return env.LOCAL_MODEL_API_KEY || 'dummy';
@@ -344,7 +344,7 @@ const CACHE_HEADER_KEYS = [
   'x-rate-limit-reset',
 ];
 
-function extractCacheHeaders(response: ProviderResponse): Record<string, string> {
+export function extractCacheHeaders(response: ProviderResponse): Record<string, string> {
   const extracted: Record<string, string> = {};
   for (const key of CACHE_HEADER_KEYS) {
     const val = response.headers[key] ?? response.headers[key.toLowerCase()];
@@ -369,7 +369,7 @@ function serializeToolResult(result: unknown): string {
   }
 }
 
-function toAgentTools(request: LlmRuntimeRequest): AgentTool[] {
+export function toAgentTools(request: LlmRuntimeRequest): AgentTool[] {
   if (!request.tools || Object.keys(request.tools).length === 0) return [];
 
   return Object.entries(request.tools).map(([name, tool]) => ({
@@ -626,6 +626,43 @@ export function createPiAiLlmRuntime(): LlmRuntime {
 }
 
 // ---------------------------------------------------------------------------
+// Session-aware runtime factory
+// ---------------------------------------------------------------------------
+
+import { SessionAwareRuntime, type SessionRuntimeDeps } from './session-runtime.js';
+
+function createDefaultSessionDeps(): SessionRuntimeDeps {
+  return {
+    resolveModel,
+    resolveApiKey,
+    toAgentTools,
+    parseModelSpec,
+    deriveSessionId,
+    extractCacheHeaders,
+  };
+}
+
+let _defaultSessionRuntime: SessionAwareRuntime | null = null;
+
+/**
+ * Get or create a singleton SessionAwareRuntime with default deps.
+ * This is the primary entrypoint for the session-aware narrator path.
+ */
+export function getSessionRuntime(): SessionAwareRuntime {
+  if (!_defaultSessionRuntime) {
+    _defaultSessionRuntime = new SessionAwareRuntime(createDefaultSessionDeps());
+  }
+  return _defaultSessionRuntime;
+}
+
+/**
+ * For testing — create a fresh SessionAwareRuntime with custom deps.
+ */
+export function createSessionRuntime(deps?: SessionRuntimeDeps): SessionAwareRuntime {
+  return new SessionAwareRuntime(deps ?? createDefaultSessionDeps());
+}
+
+// ---------------------------------------------------------------------------
 // Session ID derivation
 // ---------------------------------------------------------------------------
 
@@ -638,7 +675,7 @@ export function createPiAiLlmRuntime(): LlmRuntime {
  * for semantically related requests so the provider can reuse cached
  * prompt prefixes.
  */
-function deriveSessionId(request: LlmRuntimeRequest): string {
+export function deriveSessionId(request: LlmRuntimeRequest): string {
   const md = request.metadata;
 
   // Best: room-based session — same room = same session
