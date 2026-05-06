@@ -198,6 +198,52 @@ Code updates tied to this run:
   - `ephemeral: true` → `flags: MessageFlags.Ephemeral`
   - `client.on('ready', ...)` → `client.on('clientReady', ...)`
 
+### Run 003 — 2026-05-06 (live `/say` narration validation)
+
+Environment:
+
+- Demo bot launched from local runtime with guild-scoped command registration.
+- `DEFAULT_MODEL_SPEC=openrouter:deepseek/deepseek-v4-flash`
+- `ENABLE_BRIEFING_GENERATOR=1`
+- Shared party narration exercised through `/say`.
+
+Observed results:
+
+- ✅ `/ping` returned expected ephemeral `pong`.
+- ✅ `/say` produced a quick visible player echo followed by a narrator reply in-channel.
+- ✅ Discord typing indicator remained active while longer narrator calls were in flight.
+- ✅ Admin-only `/say user:Player A|Player B ...` override allowed one operator to exercise multi-actor validation flows.
+- ✅ Two closely spaced actor turns both produced visible echoes and narrator follow-ups.
+- ✅ Governance-scope `briefing` statements were emitted from Discord turns with source linkage.
+- ✅ `open-question` statements were emitted when narrator responses took the `invention` path.
+- ⚠️ Provider behavior was inconsistent: at least one turn returned an empty LLM response and fell back to deterministic narration.
+- ⚠️ Narrator latency was high (observed ~12s to ~41s), making typing feedback necessary.
+- ⚠️ Follow-up narrative coherence between nearby turns still needs deeper review in a future pass.
+
+Representative evidence captured during this run:
+
+- Party statement chain:
+  - `dialogue` `3b0ae5a1-fe81-48b0-bd07-1cc0b4061587`
+  - `invention` `9e8483c4-e65f-48cd-b488-027554c9d655`
+- Governance statement chain:
+  - `briefing` `324698ba-fc6a-4254-a389-d28453292b7a`
+  - `open-question` `b6e8cb0d-981e-4b9f-b36c-507f9d037e30`
+- Example narrator request profile:
+  - request id `ce0a6250-4d75-47e1-8050-300796b13d6e`
+  - elapsed `40804ms`
+  - response chars `964`
+
+Scenario status updates from this run:
+
+- `D-020` Party narration loop: **validated**, with latency caveat.
+- `D-021` Multi-user turn clarity: **validated via admin demo override**, with broader coherence review still pending.
+- `D-030` Open-question creation/routing: **partially exercised** from Discord narration output.
+- `D-040` Briefing generation: **partially exercised** from Discord party activity.
+
+Carry-over technical TODO:
+
+- Replace the current literal `/say` echo with an agentic, visibility-aware action-echo path that can choose public vs. private acknowledgment and render in narrator/campaign tone.
+
 ## Exit criteria for milestone 0003 validation
 
 - All critical scenarios in sections A–E pass.

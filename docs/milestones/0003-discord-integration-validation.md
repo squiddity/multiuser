@@ -126,16 +126,28 @@ The demo bot's hardcoded state machine has been replaced with the agentic patter
 - ✅ Registered `briefing-generator` in the main service lifecycle and disabled duplicate `live-responder` scheduling when the Discord adapter is active, so Discord-driven turns can produce briefings without duplicate narrator responses.
 - ✅ Added integration coverage in `test/integration/discord-party-turns.test.ts` for statement writes, event emission, and automatic grant creation.
 
+### Live Discord validation snapshot (2026-05-06)
+
+A live Discord validation pass covered the currently implemented `/say` path:
+
+- ✅ `/ping` health check succeeded.
+- ✅ `D-020` core party narration loop was exercised successfully with visible player echo, Discord typing indicator during long narrator waits, and in-channel narrator follow-up.
+- ✅ `D-021` multi-actor turn clarity was exercised using the admin-only demo actor override (`user=Player A|Player B`); both echoes and both narrator follow-ups arrived clearly enough for validation.
+- ✅ `D-030` open-question creation/routing was partially demonstrated from Discord turns when narrator output produced `invention` records.
+- ✅ `D-040` briefing generation was partially demonstrated from Discord turns; governance-scope `briefing` statements were emitted with source references.
+- ⚠️ Provider/runtime behavior remains flaky under live use: some turns returned rich output, while others returned an empty model response and fell back to deterministic narration. Latency was also high enough to require explicit typing feedback.
+- ⚠️ Multi-turn narrative coherence across closely related follow-ups still needs dedicated review in a later session.
+
 ### Still to do
 
-- [ ] Run full run-sheet validation against the agentic flow (live Discord bot test).
+- [ ] Run the remaining run-sheet scenarios against the live bot and capture artifacts in the run log.
 - [ ] Room and role projection checks (channels, permissions, mappings).
-- [ ] Live-validate core party narration loop in Discord.
 - [ ] Open-question and canonization loop in Discord.
 - [ ] Briefing and steering loop in Discord.
 - [ ] NPC/webhook rendering checks.
 - [ ] Drift and reconciliation fault tests.
 - [ ] Permission-boundary hard checks.
+- [ ] Replace the literal `/say` echo with an agentic, visibility-aware action-echo path that can choose public vs. private acknowledgment and render it in campaign/narrator tone.
 
 ## Out of scope
 
