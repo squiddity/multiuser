@@ -10,6 +10,7 @@ import {
   TextInputBuilder,
   TextInputStyle,
   MessageFlags,
+  PermissionFlagsBits,
   type ButtonInteraction,
   type Interaction,
   type ModalSubmitInteraction,
@@ -29,7 +30,11 @@ import {
 import { validateCharacterDraft, formatValidationErrors } from '../../resolvers/tools/validate.js';
 import { env } from '../../config/env.js';
 import type { EventBus } from '../../core/events.js';
-import { submitDiscordPartyTurn } from './party-turns.js';
+import {
+  continueDiscordPartyTurn,
+  recordDiscordPartyDialogue,
+  resolveDiscordPartyActor,
+} from './party-turns.js';
 
 const DEFAULT_MODEL = 'openrouter:deepseek/deepseek-v4-flash';
 
@@ -60,6 +65,33 @@ function buildDiscordModal(spec: ModalSpec): ModalBuilder {
 
 function renderAgentComponents(specs: ComponentSpec[]): ActionRowBuilder<any>[] {
   return renderComponentSpecs(specs);
+}
+
+async function startTypingIndicator(
+  interaction: Interaction,
+  logger: Logger,
+): Promise<(() => void) | undefined> {
+  const channel = interaction.channel;
+  if (!channel || !('sendTyping' in channel) || typeof channel.sendTyping !== 'function') {
+    return undefined;
+  }
+
+  const sendTyping = async () => {
+    try {
+      await channel.sendTyping();
+    } catch (error) {
+      logger.debug({ err: error }, 'discord typing indicator failed');
+    }
+  };
+
+  await sendTyping();
+  const interval = setInterval(() => {
+    void sendTyping();
+  }, 7000);
+
+  return () => {
+    clearInterval(interval);
+  };
 }
 
 // --- Interaction serialization ---
@@ -151,29 +183,62 @@ export async function startDiscordDemoBot({
 
       if (interaction.isChatInputCommand() && interaction.commandName === 'say') {
         const text = interaction.options.getString('text', true);
+        const actorKey = interaction.options.getString('user');
         const displayName =
           interaction.member && 'displayName' in interaction.member
             ? interaction.member.displayName
             : interaction.user.displayName;
+        const isAdmin = interaction.memberPermissions?.has(PermissionFlagsBits.Administrator);
+
+        if (actorKey && !isAdmin) {
+          await interaction.reply({
+            flags: MessageFlags.Ephemeral,
+            content: 'Only administrators can use the user override for /say.',
+          });
+          return;
+        }
+
+        const actor = resolveDiscordPartyActor({
+          discordUserId: interaction.user.id,
+          discordDisplayName: displayName,
+          actorKey,
+        });
 
         await interaction.deferReply();
 
-        const result = await submitDiscordPartyTurn({
-          userId: interaction.user.id,
+        const playerStatementId = await recordDiscordPartyDialogue({
+          userId: actor.userId,
           text,
-          modelSpec: env.DEFAULT_MODEL_SPEC || DEFAULT_MODEL,
           events,
-          logger,
           fields: {
             discordChannelId: interaction.channelId,
             discordGuildId: interaction.guildId,
             discordUserId: interaction.user.id,
             discordDisplayName: displayName,
+            actingUserId: actor.userId,
+            actingDisplayName: actor.displayName,
+            actingUserOverride: actor.actorKey ?? null,
+            overriddenByDiscordUserId: actor.overriddenByUserId ?? null,
           },
         });
 
-        await interaction.editReply(`**${displayName}:** ${text}`);
-        await interaction.followUp({ content: result.output.content });
+        await interaction.editReply(`**${actor.displayName}:** ${text}`);
+
+        const stopTyping = await startTypingIndicator(interaction, logger);
+        try {
+          const result = await continueDiscordPartyTurn({
+            userId: actor.userId,
+            text,
+            playerStatementId,
+            modelSpec: env.DEFAULT_MODEL_SPEC || DEFAULT_MODEL,
+            events,
+            logger,
+          });
+
+          await interaction.followUp({ content: result.output.content });
+        } finally {
+          stopTyping?.();
+        }
         return;
       }
 
@@ -462,6 +527,13 @@ async function registerCommands(
       .setDescription('Submit an in-character action or line to the party narrator')
       .addStringOption((option) =>
         option.setName('text').setDescription('What your character says or does').setRequired(true),
+      )
+      .addStringOption((option) =>
+        option
+          .setName('user')
+          .setDescription('Admin-only demo override for acting as another player')
+          .addChoices({ name: 'Player A', value: 'A' }, { name: 'Player B', value: 'B' })
+          .setRequired(false),
       ),
     new SlashCommandBuilder()
       .setName('start-onboarding')

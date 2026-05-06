@@ -12,9 +12,42 @@ export const DISCORD_DEMO_PARTY_ROOM_ID = '11111111-1111-1111-1111-111111111111'
 export const DISCORD_DEMO_ADMIN_ROOM_ID = '22222222-2222-2222-2222-222222222222';
 const DISCORD_DEMO_PLAYER_ROLE_ID = '33333333-3333-3333-3333-333333333333';
 
+const DISCORD_DEMO_ACTORS = {
+  A: {
+    userId: 'discord-demo-player-a',
+    displayName: 'Player A',
+  },
+  B: {
+    userId: 'discord-demo-player-b',
+    displayName: 'Player B',
+  },
+} as const;
+
+export type DiscordDemoActorKey = keyof typeof DISCORD_DEMO_ACTORS;
+
 export interface PartyTurnNarrator {
   compose(roomId: string, userId: string, recentContent?: string): Promise<NarratorOutput>;
   emit(roomId: string, output: NarratorOutput, sources?: string[]): Promise<string[]>;
+}
+
+export interface RecordDiscordPartyDialogueInput {
+  userId: string;
+  text: string;
+  events: EventBus;
+  partyRoomId?: string;
+  fields?: Record<string, unknown>;
+}
+
+export interface ContinueDiscordPartyTurnInput {
+  userId: string;
+  text: string;
+  playerStatementId: string;
+  modelSpec: string;
+  events: EventBus;
+  logger: Logger;
+  narrator?: PartyTurnNarrator;
+  partyRoomId?: string;
+  adminRoomId?: string;
 }
 
 export interface SubmitDiscordPartyTurnInput {
@@ -35,6 +68,13 @@ export interface SubmitDiscordPartyTurnResult {
   output: NarratorOutput;
 }
 
+export interface DiscordPartyActorIdentity {
+  userId: string;
+  displayName: string;
+  overriddenByUserId?: string;
+  actorKey?: DiscordDemoActorKey;
+}
+
 export async function ensureDiscordDemoPlayerGrant(
   userId: string,
   partyRoomId = DISCORD_DEMO_PARTY_ROOM_ID,
@@ -53,6 +93,27 @@ export async function ensureDiscordDemoPlayerGrant(
   });
 }
 
+export function resolveDiscordPartyActor(input: {
+  discordUserId: string;
+  discordDisplayName: string;
+  actorKey?: string | null;
+}): DiscordPartyActorIdentity {
+  const actor = input.actorKey ? DISCORD_DEMO_ACTORS[input.actorKey as DiscordDemoActorKey] : null;
+  if (!actor) {
+    return {
+      userId: input.discordUserId,
+      displayName: input.discordDisplayName,
+    };
+  }
+
+  return {
+    userId: actor.userId,
+    displayName: actor.displayName,
+    overriddenByUserId: input.discordUserId,
+    actorKey: input.actorKey as DiscordDemoActorKey,
+  };
+}
+
 export async function emitStatementCreatedById(id: string, events: EventBus): Promise<void> {
   const row = await getStatement(id);
   if (!row) return;
@@ -65,17 +126,13 @@ export async function emitStatementCreatedById(id: string, events: EventBus): Pr
   });
 }
 
-export async function submitDiscordPartyTurn({
+export async function recordDiscordPartyDialogue({
   userId,
   text,
-  modelSpec,
   events,
-  logger,
-  narrator,
   partyRoomId = DISCORD_DEMO_PARTY_ROOM_ID,
-  adminRoomId = DISCORD_DEMO_ADMIN_ROOM_ID,
   fields = {},
-}: SubmitDiscordPartyTurnInput): Promise<SubmitDiscordPartyTurnResult> {
+}: RecordDiscordPartyDialogueInput): Promise<string> {
   const trimmed = text.trim();
   if (!trimmed) {
     throw new Error('party turn text must not be empty');
@@ -83,7 +140,7 @@ export async function submitDiscordPartyTurn({
 
   await ensureDiscordDemoPlayerGrant(userId, partyRoomId);
 
-  const playerStatementId = await appendIndexAndEmit(
+  return appendIndexAndEmit(
     {
       scope: { type: 'party', partyId: partyRoomId },
       kind: 'dialogue',
@@ -95,6 +152,25 @@ export async function submitDiscordPartyTurn({
     },
     events,
   );
+}
+
+export async function continueDiscordPartyTurn({
+  userId,
+  text,
+  playerStatementId,
+  modelSpec,
+  events,
+  logger,
+  narrator,
+  partyRoomId = DISCORD_DEMO_PARTY_ROOM_ID,
+  adminRoomId = DISCORD_DEMO_ADMIN_ROOM_ID,
+}: ContinueDiscordPartyTurnInput): Promise<
+  Omit<SubmitDiscordPartyTurnResult, 'playerStatementId'>
+> {
+  const trimmed = text.trim();
+  if (!trimmed) {
+    throw new Error('party turn text must not be empty');
+  }
 
   const turnNarrator =
     narrator ??
@@ -116,8 +192,44 @@ export async function submitDiscordPartyTurn({
   );
 
   return {
-    playerStatementId,
     narratorStatementIds,
     output,
+  };
+}
+
+export async function submitDiscordPartyTurn({
+  userId,
+  text,
+  modelSpec,
+  events,
+  logger,
+  narrator,
+  partyRoomId = DISCORD_DEMO_PARTY_ROOM_ID,
+  adminRoomId = DISCORD_DEMO_ADMIN_ROOM_ID,
+  fields = {},
+}: SubmitDiscordPartyTurnInput): Promise<SubmitDiscordPartyTurnResult> {
+  const playerStatementId = await recordDiscordPartyDialogue({
+    userId,
+    text,
+    events,
+    partyRoomId,
+    fields,
+  });
+
+  const result = await continueDiscordPartyTurn({
+    userId,
+    text,
+    playerStatementId,
+    modelSpec,
+    events,
+    logger,
+    narrator,
+    partyRoomId,
+    adminRoomId,
+  });
+
+  return {
+    playerStatementId,
+    ...result,
   };
 }

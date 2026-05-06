@@ -118,8 +118,10 @@ The demo bot's hardcoded state machine has been replaced with the agentic patter
 - ✅ `/say` now:
   - ensures the Discord user has the demo player grant for the seeded party room,
   - appends a `dialogue` statement in party scope,
+  - shows the visible player/action echo before waiting for narrator completion,
   - invokes the existing `Narrator` path directly for Discord turns,
   - emits follow-on statement events for narrator output so downstream workers can react.
+- ✅ Added an admin-only demo actor override on `/say` (`user=Player A|Player B`) so a single operator can exercise multi-actor validation flows without needing multiple live Discord accounts. The override is explicitly for validation/demo use, not the intended player privilege model.
 - ✅ Added `src/adapters/discord/party-turns.ts` as the thin Discord-side party-turn service.
 - ✅ Registered `briefing-generator` in the main service lifecycle and disabled duplicate `live-responder` scheduling when the Discord adapter is active, so Discord-driven turns can produce briefings without duplicate narrator responses.
 - ✅ Added integration coverage in `test/integration/discord-party-turns.test.ts` for statement writes, event emission, and automatic grant creation.

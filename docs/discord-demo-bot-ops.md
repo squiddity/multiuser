@@ -68,6 +68,9 @@ The bot currently provides:
 - `/ping`
 - `/start-onboarding` with ephemeral-first flow
 - `/say` for the shared party narration loop
+  - responds in two phases: quick visible player echo first, narrator follow-up second
+  - keeps Discord's typing indicator active while the narrator call is in flight
+  - supports an admin-only demo override (`user=Player A|Player B`) for validation with synthetic actors
 - private-thread escalation button
 - statement-backed onboarding session state via the generic workflow session store (persists across process restart)
 - event-driven party-turn writes that trigger downstream workers such as briefing generation

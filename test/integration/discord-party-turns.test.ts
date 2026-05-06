@@ -8,7 +8,10 @@ import { seed } from '../../src/store/seed.js';
 import { roleGrants, statements } from '../../src/store/schema.js';
 import { EventBus, type StatementEvent } from '../../src/core/events.js';
 import {
+  continueDiscordPartyTurn,
   DISCORD_DEMO_PARTY_ROOM_ID,
+  recordDiscordPartyDialogue,
+  resolveDiscordPartyActor,
   submitDiscordPartyTurn,
 } from '../../src/adapters/discord/party-turns.js';
 
@@ -28,6 +31,30 @@ const noopLogger: Logger = {
 async function cleanupUser(userId: string): Promise<void> {
   await db.delete(roleGrants).where(eq(roleGrants.userId, userId));
 }
+
+const testNarrator = {
+  compose: async () => ({
+    kind: 'narration' as const,
+    content: 'The innkeeper lowers her voice and points east toward the red tower.',
+  }),
+  emit: async (
+    roomId: string,
+    output: { kind: 'narration'; content: string },
+    sources?: string[],
+  ) => {
+    const id = await appendStatement({
+      scope: { type: 'party', partyId: roomId },
+      kind: output.kind,
+      authorType: 'agent',
+      authorId: 'narrator',
+      content: output.content,
+      sources: sources ?? [],
+      embedding: null,
+    });
+    touchedStatementIds.push(id);
+    return [id];
+  },
+};
 
 describe('integration: Discord party turns', () => {
   beforeAll(async () => {
@@ -67,25 +94,7 @@ describe('integration: Discord party turns', () => {
       modelSpec: 'test-model',
       events,
       logger: noopLogger,
-      narrator: {
-        compose: async () => ({
-          kind: 'narration',
-          content: 'The innkeeper lowers her voice and points east toward the red tower.',
-        }),
-        emit: async (roomId, output, sources) => {
-          const id = await appendStatement({
-            scope: { type: 'party', partyId: roomId },
-            kind: output.kind,
-            authorType: 'agent',
-            authorId: 'narrator',
-            content: output.content,
-            sources: sources ?? [],
-            embedding: null,
-          });
-          touchedStatementIds.push(id);
-          return [id];
-        },
-      },
+      narrator: testNarrator,
       fields: {
         discordChannelId: 'channel-1',
       },
@@ -119,5 +128,53 @@ describe('integration: Discord party turns', () => {
       .where(and(eq(roleGrants.userId, userId), eq(roleGrants.roomId, DISCORD_DEMO_PARTY_ROOM_ID)));
     expect(grantRows).toHaveLength(1);
     expect(grantRows[0]?.roleId).toBe('33333333-3333-3333-3333-333333333333');
+  });
+
+  it('supports recording the player echo before narrator completion', async () => {
+    const userId = 'discord-party-user-2';
+    touchedUserIds.add(userId);
+
+    const events = new EventBus();
+    const seenEvents: StatementEvent[] = [];
+    events.on<StatementEvent>('statement:created', (event) => {
+      seenEvents.push(event);
+    });
+
+    const playerStatementId = await recordDiscordPartyDialogue({
+      userId,
+      text: 'I ask whether the tower bells still ring.',
+      events,
+      fields: { discordChannelId: 'channel-2' },
+    });
+    touchedStatementIds.push(playerStatementId);
+
+    expect(seenEvents.map((event) => event.kind)).toEqual(['dialogue']);
+
+    const result = await continueDiscordPartyTurn({
+      userId,
+      text: 'I ask whether the tower bells still ring.',
+      playerStatementId,
+      modelSpec: 'test-model',
+      events,
+      logger: noopLogger,
+      narrator: testNarrator,
+    });
+    touchedStatementIds.push(...result.narratorStatementIds);
+
+    expect(seenEvents.map((event) => event.kind)).toEqual(['dialogue', 'narration']);
+    expect(result.narratorStatementIds).toHaveLength(1);
+  });
+
+  it('resolves admin demo actor overrides to synthetic party users', () => {
+    const actor = resolveDiscordPartyActor({
+      discordUserId: 'real-admin-user',
+      discordDisplayName: 'Operator',
+      actorKey: 'B',
+    });
+
+    expect(actor.userId).toBe('discord-demo-player-b');
+    expect(actor.displayName).toBe('Player B');
+    expect(actor.overriddenByUserId).toBe('real-admin-user');
+    expect(actor.actorKey).toBe('B');
   });
 });
