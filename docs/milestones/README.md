@@ -35,6 +35,11 @@ Provide a single roadmap index for milestone status, sequencing, and handoff con
    - Status: **Planned**
    - Focus: deferred mechanics dispatch, gameplay commands (starting with `/roll`), and deferred safety command controls.
 
+5. **0005 — LLM Context Efficiency and Session Caching**
+   - File: `docs/milestones/0005-llm-context-efficiency-and-session-caching.md`
+   - Status: **Planned**
+   - Focus: cache-friendly context assembly, append-oriented live session carry-forward, summary/compaction layers, and efficiency evals.
+
 ## Notes for handoff
 
 - Milestone status and scope boundaries are also captured in `docs/decisions.md` (D53–D55).

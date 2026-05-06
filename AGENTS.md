@@ -84,6 +84,7 @@ pnpm test:integration
 - `docs/rooms-and-roles.md` — rooms, roles, scope bindings, cross-room flows, interception.
 - `docs/runtime-and-processing.md` — workers, triggers, scheduler tiers, open-question protocol, consistency metrics.
 - `docs/llm-runtime.md` — LLM runtime layering and pi SDK integration posture.
+- `docs/llm-context-efficiency.md` — future plan for cache-friendly session context, retrieval layering, and compaction.
 - `docs/statement-store-abstraction.md` — canonical statement-store contract and backend swap constraints.
 - `docs/typebox-migration.md` — migration record for TypeBox adoption.
 - `docs/platform-adapter.md` — platform-agnostic adapter interface; Discord v1 specifics.
@@ -99,3 +100,4 @@ pnpm test:integration
 - `docs/milestones/0002-stateful-llm-evals-and-extraction.md` — current milestone for briefing + steering context workflows.
 - `docs/milestones/0003-discord-integration-validation.md` — Discord adapter integration and behavior validation plan.
 - `docs/milestones/0004-rpg-mechanics-command-surface.md` — deferred mechanics and command-surface roadmap.
+- `docs/milestones/0005-llm-context-efficiency-and-session-caching.md` — future cache-friendly context assembly and session-caching milestone.

@@ -43,3 +43,7 @@ If introduced, it should remain a runtime/session convenience layer and not repl
 - Tool-enabled turns run through `pi-agent-core` (`Agent`) instead of app-managed orchestration.
 - Local tool definitions are adapted into runtime `AgentTool` contracts; argument validation happens at the schema boundary before execution.
 - Persist usage/cost telemetry in first-class records tied to statement/turn IDs.
+
+## Related future work
+
+For the planned optimization pass on cache-friendly session handling, append-oriented prompt structure, and statement-store retrieval layering, see `docs/llm-context-efficiency.md`.
