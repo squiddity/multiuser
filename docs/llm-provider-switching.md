@@ -6,7 +6,7 @@ Track known-working model specs and preserve the previous default so local/dev s
 
 ## Current default for demos and bot runs
 
-- `DEFAULT_MODEL_SPEC=openrouter:deepseek/deepseek-chat`
+- `DEFAULT_MODEL_SPEC=openrouter:deepseek/deepseek-v4-flash`
 
 ## Previous local default (fallback)
 
@@ -21,15 +21,15 @@ Track known-working model specs and preserve the previous default so local/dev s
 
 ## Current recommendation
 
-- `openrouter:deepseek/deepseek-chat` — current default for demo and Discord bot runs.
-- `openrouter:deepseek/deepseek-v4-flash` — validated in the fixed OpenRouter runtime path and remains an alternate OpenRouter option.
+- `openrouter:deepseek/deepseek-v4-flash` — current default for demo and Discord bot runs.
+- `openrouter:deepseek/deepseek-chat` — previous OpenRouter default and a known alternate option.
 
 ## Quick switch examples
 
 Use one-off env override:
 
 ```bash
-DEFAULT_MODEL_SPEC=openrouter:deepseek/deepseek-chat pnpm demo:cli
+DEFAULT_MODEL_SPEC=openrouter:deepseek/deepseek-v4-flash pnpm demo:cli
 ```
 
 Restore previous local default:

@@ -28,7 +28,7 @@ import {
 import { validateCharacterDraft, formatValidationErrors } from '../../resolvers/tools/validate.js';
 import { env } from '../../config/env.js';
 
-const DEFAULT_MODEL = 'openrouter:deepseek/deepseek-chat';
+const DEFAULT_MODEL = 'openrouter:deepseek/deepseek-v4-flash';
 
 // --- Modal rendering (Discord.js specific) ---
 
