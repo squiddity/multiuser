@@ -10,7 +10,7 @@ Set these in `.env`:
 
 ```env
 DATABASE_URL=postgres://...
-DEFAULT_MODEL_SPEC=openrouter:deepseek/deepseek-v4-flash
+DEFAULT_MODEL_SPEC=openrouter:nvidia/llama-3.3-nemotron-super-49b-v1.5
 DISCORD_BOT_TOKEN=your_bot_token
 DISCORD_GUILD_ID=optional_test_guild_id
 ```
@@ -31,7 +31,8 @@ What starts:
 - API server + workers
 - Discord demo bot (if `DISCORD_BOT_TOKEN` is set)
 
-The bot uses `DEFAULT_MODEL_SPEC` for live narrator/worker behavior. The current default is `openrouter:deepseek/deepseek-v4-flash`.
+The bot uses `DEFAULT_MODEL_SPEC` for live narrator/worker behavior. The current default is `openrouter:nvidia/llama-3.3-nemotron-super-49b-v1.5`.
+If the primary model fails during a `/say` turn, the bot automatically retries narration once with fallback `openrouter:openai/gpt-4o-mini`.
 
 Startup log should include:
 

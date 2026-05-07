@@ -43,7 +43,12 @@ import {
   resolveDiscordDemoPlayerDefinition,
 } from './demo-state.js';
 
-const DEFAULT_MODEL = 'openrouter:deepseek/deepseek-v4-flash';
+const DEFAULT_MODEL = 'openrouter:nvidia/llama-3.3-nemotron-super-49b-v1.5';
+const FALLBACK_MODEL = 'openrouter:openai/gpt-4o-mini';
+
+function resolvePrimaryModelSpec(): string {
+  return env.DEFAULT_MODEL_SPEC || DEFAULT_MODEL;
+}
 
 // --- Modal rendering (Discord.js specific) ---
 
@@ -150,7 +155,7 @@ export async function startDiscordDemoBot({
 
   const store: OnboardingStore = new StatementBackedOnboardingStore();
   const agent: OnboardingAgent = createOnboardingAgent({
-    modelSpec: env.DEFAULT_MODEL_SPEC || DEFAULT_MODEL,
+    modelSpec: resolvePrimaryModelSpec(),
   });
 
   client.on('error', (err) => {
@@ -309,15 +314,38 @@ export async function startDiscordDemoBot({
         });
 
         const stopTyping = await startTypingIndicator(interaction, logger);
+        const primaryModelSpec = resolvePrimaryModelSpec();
+
         try {
-          const result = await continueDiscordPartyTurn({
-            userId: actor.userId,
-            text,
-            playerStatementId,
-            modelSpec: env.DEFAULT_MODEL_SPEC || DEFAULT_MODEL,
-            events,
-            logger,
-          });
+          let result;
+          try {
+            result = await continueDiscordPartyTurn({
+              userId: actor.userId,
+              text,
+              playerStatementId,
+              modelSpec: primaryModelSpec,
+              events,
+              logger,
+            });
+          } catch (primaryErr) {
+            if (primaryModelSpec === FALLBACK_MODEL) {
+              throw primaryErr;
+            }
+
+            logger.warn(
+              { err: primaryErr, primaryModelSpec, fallbackModelSpec: FALLBACK_MODEL },
+              'primary narration model failed; retrying with fallback model',
+            );
+
+            result = await continueDiscordPartyTurn({
+              userId: actor.userId,
+              text,
+              playerStatementId,
+              modelSpec: FALLBACK_MODEL,
+              events,
+              logger,
+            });
+          }
 
           // Replace "Thinking..." with actual narration
           await thinkingMsg.edit(result.output.content);

@@ -4,6 +4,8 @@
 
 Provide a repeatable, live-model profiling suite for narrator-style multi-turn requests.
 
+For a concrete multi-model comparison run, see `docs/llm-narrator-probe-report-2026-05-06.md`.
+
 This probe is intentionally separate from unit/integration tests because it calls external model providers and measures runtime behavior (latency, token usage, cache-read behavior).
 
 ## Entry point
@@ -52,14 +54,14 @@ Set via environment variables:
 Single model, all scenarios:
 
 ```bash
-NARRATOR_PROBE_MODEL_SPECS=openrouter:deepseek/deepseek-v4-flash \
+NARRATOR_PROBE_MODEL_SPECS=openrouter:nvidia/llama-3.3-nemotron-super-49b-v1.5 \
 pnpm probe:narrator-session
 ```
 
 Two models, one scenario, repeated:
 
 ```bash
-NARRATOR_PROBE_MODEL_SPECS=openrouter:deepseek/deepseek-v4-flash,openrouter:anthropic/claude-sonnet-4 \
+NARRATOR_PROBE_MODEL_SPECS=openrouter:nvidia/llama-3.3-nemotron-super-49b-v1.5,openrouter:openai/gpt-4o-mini \
 NARRATOR_PROBE_SCENARIOS=growing-context \
 NARRATOR_PROBE_ITERATIONS=3 \
 pnpm probe:narrator-session

@@ -6,11 +6,11 @@ Track known-working model specs and preserve the previous default so local/dev s
 
 ## Current default for demos and bot runs
 
-- `DEFAULT_MODEL_SPEC=openrouter:deepseek/deepseek-v4-flash`
+- `DEFAULT_MODEL_SPEC=openrouter:nvidia/llama-3.3-nemotron-super-49b-v1.5`
 
-## Previous local default (fallback)
+## Fallback recommendation
 
-- `DEFAULT_MODEL_SPEC=local:user.Qwen3.6-35B-A3B-ThinkingCoder`
+- `DEFAULT_MODEL_SPEC=openrouter:openai/gpt-4o-mini`
 
 ## OpenRouter probe results (same pi runtime path)
 
@@ -21,19 +21,19 @@ Track known-working model specs and preserve the previous default so local/dev s
 
 ## Current recommendation
 
-- `openrouter:deepseek/deepseek-v4-flash` — current default for demo and Discord bot runs.
-- `openrouter:deepseek/deepseek-chat` — previous OpenRouter default and a known alternate option.
+- `openrouter:nvidia/llama-3.3-nemotron-super-49b-v1.5` — current default for demo and Discord bot runs.
+- `openrouter:openai/gpt-4o-mini` — preferred fallback when the default provider/model is degraded.
 
 ## Quick switch examples
 
 Use one-off env override:
 
 ```bash
-DEFAULT_MODEL_SPEC=openrouter:deepseek/deepseek-v4-flash pnpm demo:cli
+DEFAULT_MODEL_SPEC=openrouter:nvidia/llama-3.3-nemotron-super-49b-v1.5 pnpm demo:cli
 ```
 
-Restore previous local default:
+Switch to fallback model:
 
 ```bash
-DEFAULT_MODEL_SPEC=local:user.Qwen3.6-35B-A3B-ThinkingCoder pnpm demo:cli
+DEFAULT_MODEL_SPEC=openrouter:openai/gpt-4o-mini pnpm demo:cli
 ```
