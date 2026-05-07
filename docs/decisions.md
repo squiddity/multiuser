@@ -89,7 +89,7 @@ Format:
 ### D10. Agent runtime
 
 - **Q** — Claude Agent SDK, LangGraph, Mastra, or Letta?
-- **D** — Use pi SDK components (`@mariozechner/pi-ai` + `@mariozechner/pi-agent-core`) behind local interfaces, with our domain types owning the vocabulary.
+- **D** — Use pi SDK components (`@earendil-works/pi-ai` + `@earendil-works/pi-agent-core`) behind local interfaces, with our domain types owning the vocabulary.
 - **R** — pi provides lean model/provider abstraction, tool-loop/session primitives, and usage/cost telemetry without forcing us to adopt an opinionated application memory model. This keeps runtime plumbing replaceable while preserving our statement-store-first architecture.
 - **S** — resolved.
 

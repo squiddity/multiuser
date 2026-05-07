@@ -1,7 +1,7 @@
 #!/usr/bin/env tsx
 import 'dotenv/config';
-import { Agent } from '@mariozechner/pi-agent-core';
-import { getModel, type AssistantMessage } from '@mariozechner/pi-ai';
+import { Agent } from '@earendil-works/pi-agent-core';
+import { getModel, type AssistantMessage } from '@earendil-works/pi-ai';
 import { env } from '../src/config/env.js';
 
 function parseModelSpec(spec: string): { provider: string; modelId: string } {

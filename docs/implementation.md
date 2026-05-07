@@ -7,7 +7,7 @@ Fix the concrete stack, component topology, and code layout for v1. Everything a
 ## Stack
 
 - **Language: TypeScript** (Node 20+). Single language end-to-end; Discord ecosystem fit.
-- **Agent runtime: pi SDK components (`@mariozechner/pi-ai`, `@mariozechner/pi-agent-core`) behind local interfaces.** Use pi for model/provider resolution, tool-call loop execution, streaming events, and per-turn usage/cost accounting.
+- **Agent runtime: pi SDK components (`@earendil-works/pi-ai`, `@earendil-works/pi-agent-core`) behind local interfaces.** Use pi for model/provider resolution, tool-call loop execution, streaming events, and per-turn usage/cost accounting.
 - **Domain types and canonical state remain local.** The statement store is authoritative; pi runtime state is reconstructable/ephemeral. Runtime swap remains possible in principle.
 - **Storage: PostgreSQL 16+** with the **pgvector** extension. JSONB for flexible statement fields.
 - **DB access: Drizzle** (typed query builder, migrations, pairs well with TypeBox contracts).

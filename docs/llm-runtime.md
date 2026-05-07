@@ -6,7 +6,7 @@ Define how LLM invocation, tool loops, and session-turn mechanics are integrated
 
 ## Decision summary
 
-- Runtime base: `@mariozechner/pi-ai` + `@mariozechner/pi-agent-core`.
+- Runtime base: `@earendil-works/pi-ai` + `@earendil-works/pi-agent-core`.
 - Local boundary: workers and agents call a local `LlmRuntime` interface.
 - Canonical state remains in the statement store; runtime transcript state is reconstructable.
 

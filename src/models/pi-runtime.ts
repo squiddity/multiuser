@@ -1,6 +1,6 @@
-import { Agent, type AgentTool } from '@mariozechner/pi-agent-core';
-import type { AssistantMessage, Model, ProviderResponse } from '@mariozechner/pi-ai';
-import { getModel } from '@mariozechner/pi-ai';
+import { Agent, type AgentTool } from '@earendil-works/pi-agent-core';
+import type { AssistantMessage, Model, ProviderResponse } from '@earendil-works/pi-ai';
+import { getModel } from '@earendil-works/pi-ai';
 import { Type } from 'typebox';
 import type {
   CacheRetention,

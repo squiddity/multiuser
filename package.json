@@ -26,9 +26,9 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
+    "@earendil-works/pi-agent-core": "^0.74.0",
+    "@earendil-works/pi-ai": "^0.74.0",
     "@hono/node-server": "^1.19.14",
-    "@mariozechner/pi-agent-core": "^0.69.0",
-    "@mariozechner/pi-ai": "^0.69.0",
     "@mastra/core": "^0.10.0",
     "croner": "^9.0.0",
     "discord.js": "^14.16.3",

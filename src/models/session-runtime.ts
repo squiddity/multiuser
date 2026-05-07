@@ -10,8 +10,8 @@
  * This replaces the one-shot Agent-per-request pattern in PiAiLlmRuntime.
  */
 
-import { Agent, type AgentMessage, type AgentTool } from '@mariozechner/pi-agent-core';
-import type { AssistantMessage, Model, ProviderResponse } from '@mariozechner/pi-ai';
+import { Agent, type AgentMessage, type AgentTool } from '@earendil-works/pi-agent-core';
+import type { AssistantMessage, Model, ProviderResponse } from '@earendil-works/pi-ai';
 import { Type } from 'typebox';
 import type {
   CacheRetention,

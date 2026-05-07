@@ -5,8 +5,8 @@
  */
 
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import type { Model, ProviderResponse } from '@mariozechner/pi-ai';
-import type { AgentMessage, AgentTool } from '@mariozechner/pi-agent-core';
+import type { Model, ProviderResponse } from '@earendil-works/pi-ai';
+import type { AgentMessage, AgentTool } from '@earendil-works/pi-agent-core';
 import type { LlmRuntimeRequest } from '../../src/core/llm-runtime.js';
 import { SessionAwareRuntime, type SessionRuntimeDeps } from '../../src/models/session-runtime.js';
 
@@ -27,7 +27,7 @@ interface MockAgent {
 
 let mockAgents: MockAgent[] = [];
 
-vi.mock('@mariozechner/pi-agent-core', () => ({
+vi.mock('@earendil-works/pi-agent-core', () => ({
   Agent: vi.fn().mockImplementation(() => {
     const agent: MockAgent = {
       state: {
