@@ -55,12 +55,6 @@ beforeAll(async () => {
     },
   ]);
 
-  originalBackend = await (async () => {
-    const backend = new PgvectorSearchBackend(embedder);
-    setBackend(backend);
-    return backend;
-  })();
-
   const worldId = await appendAndIndex({
     scope: { type: 'world' } as Scope,
     kind: 'canon-reference',

@@ -199,12 +199,6 @@ beforeAll(async () => {
     content: 'The GM chamber is quiet, maps spread across the table.',
   });
   testStatementIds.push(adminId);
-
-  originalBackend = await (async () => {
-    const backend = new PgvectorSearchBackend(embedder);
-    setBackend(backend);
-    return backend;
-  })();
 });
 
 afterAll(async () => {
