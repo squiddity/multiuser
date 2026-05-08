@@ -16,7 +16,7 @@ Run these before every commit and push:
 pnpm typecheck      # required — CI gate
 pnpm format:check   # required — CI gate (fix with: pnpm format)
 pnpm test           # required — unit tests
-pnpm test:integration  # when Postgres is available
+pnpm test:integration  # required when changing storage paths
 ```
 
 Never push if `pnpm typecheck` or `pnpm format:check` fails. Fix locally in seconds rather than in CI.
@@ -61,6 +61,8 @@ Validates milestones 0001–0002 in real Discord UX, including invite-driven onb
 - `docs/statement-store-abstraction.md` — canonical statement-store contract and backend swap constraints.
 - `docs/workflow-session-store.md` — generic session-scope persistence for interruptible agent workflows.
 - `docs/llm-context-efficiency.md` — future plan for cache-friendly context assembly and compaction.
+- `docs/memory-architecture.md` — markdown + memsearch + SQLite stack; refactor phasing (Phases 0–1 shipped; 2–5 pending).
+- `docs/python-environment.md` — project-local `.venv/` workflow via `uv`.
 
 ### Platform and UI
 
