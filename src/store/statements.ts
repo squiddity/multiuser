@@ -13,7 +13,6 @@ export interface AppendStatementInput {
   supersedes?: string | null;
   sources?: string[];
   fields?: Record<string, unknown>;
-  embedding?: number[] | null;
 }
 
 export function scopeParts(scope: Scope): { scopeType: string; scopeKey: string | null } {
@@ -53,7 +52,6 @@ export async function appendStatement(input: AppendStatementInput): Promise<stri
       sources: input.sources ?? [],
       content: input.content,
       fields: input.fields ?? {},
-      embedding: input.embedding ?? null,
     })
     .returning({ id: statements.id });
   if (!row) throw new Error('append failed');

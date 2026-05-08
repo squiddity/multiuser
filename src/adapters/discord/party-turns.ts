@@ -7,6 +7,8 @@ import { getActiveGrantsForUserRoom } from '../../store/rooms.js';
 import { db } from '../../store/client.js';
 import { roleGrants } from '../../store/schema.js';
 import { getStatement } from '../../store/statements.js';
+import { transcriptRegistry } from '../../store/markdown/transcript-registry.js';
+import { logger as rootLogger } from '../../config/logger.js';
 
 export const DISCORD_DEMO_PARTY_ROOM_ID = '11111111-1111-1111-1111-111111111111';
 export const DISCORD_DEMO_ADMIN_ROOM_ID = '22222222-2222-2222-2222-222222222222';
@@ -150,6 +152,12 @@ export async function recordDiscordPartyDialogue({
   }
 
   await assertDiscordDemoPlayerGrant(userId, partyRoomId);
+
+  // Dual-write to party-chat transcript (Phase 1).
+  transcriptRegistry
+    .get(partyRoomId, 'party-chat')
+    .append(`@${userId}`, trimmed)
+    .catch((err) => rootLogger.warn({ err }, 'transcript-writer: party-chat append failed'));
 
   return appendIndexAndEmit(
     {

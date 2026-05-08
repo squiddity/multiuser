@@ -125,7 +125,6 @@ export async function recordMapping(input: {
       supersedes: existing?.id ?? null,
       ...fields,
     },
-    embedding: null,
   });
 
   return toRecord(row);

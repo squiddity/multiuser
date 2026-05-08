@@ -209,7 +209,6 @@ export class StatementBackedWorkflowSessionStore<TState> implements WorkflowSess
         workflowEventType: 'session-reset',
         workflowMetadata: input.metadata ?? {},
       },
-      embedding: null,
     });
   }
 
@@ -241,7 +240,6 @@ export class StatementBackedWorkflowSessionStore<TState> implements WorkflowSess
         state: this.serializeState(snapshot.state),
         workflowMetadata: input.metadata ?? {},
       },
-      embedding: null,
     });
   }
 

@@ -23,7 +23,6 @@ export async function emitAgentStatement(input: EmitAgentStatementInput): Promis
     supersedes: input.supersedes ?? null,
     sources: input.sources ?? [],
     fields: input.fields ?? {},
-    embedding: null,
   });
   return id;
 }
@@ -56,7 +55,6 @@ export async function createOpenQuestion(
       blocks: input.blocks ?? [],
       stage: 'deferred',
     },
-    embedding: null,
   });
   return id;
 }

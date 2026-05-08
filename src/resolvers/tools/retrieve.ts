@@ -41,7 +41,6 @@ export function createRetrieveTool(): LlmToolDefinition {
     parameters: RetrieveParams,
     execute: async (params) => {
       const results = await retrieveByScopes(params.scopes as Scope[], {
-        query: params.query,
         limit: params.limit,
       });
       return results.map((row) => ({

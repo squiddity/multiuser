@@ -1,16 +1,14 @@
-import { and, desc, eq, inArray, or, sql } from 'drizzle-orm';
+import { and, desc, eq, or, sql } from 'drizzle-orm';
 import { db } from './client.js';
 import { statements } from './schema.js';
 import { getRoom, getRole, getActiveGrantsForUserRoom } from './rooms.js';
 import { getActingCharacter } from './characters.js';
-import { getBackend } from './vectors.js';
 import type { Scope } from '../core/statement.js';
 import type { ScopePattern } from '../core/room.js';
 
 export interface RetrieveOptions {
   limit?: number;
   kind?: string;
-  query?: string;
 }
 
 export interface StatementRow {
@@ -26,7 +24,6 @@ export interface StatementRow {
   sources: string[];
   content: string;
   fields: Record<string, unknown>;
-  score?: number;
 }
 
 const selection = {
@@ -140,26 +137,6 @@ export async function retrieveForUserRoom(
   const { patterns, hasGrants } = await resolveReadPatterns(userId, roomId);
   if (!hasGrants || patterns.length === 0) return [];
 
-  if (opts.query) {
-    const results = await getBackend().search(patterns, {
-      text: opts.query,
-      limit: opts.limit ?? 100,
-      kind: opts.kind,
-    });
-    if (results.length === 0) return [];
-    const ids = results.map((r) => r.statementId);
-    const rows = await db
-      .select(selection)
-      .from(statements)
-      .where(inArray(statements.id, ids))
-      .orderBy(desc(statements.createdAt));
-    const scoreMap = new Map(results.map((r) => [r.statementId, r.score] as const));
-    return rows.map((row) => ({
-      ...row,
-      score: scoreMap.get(row.id),
-    })) as StatementRow[];
-  }
-
   const where = buildWhere(patterns, opts.kind);
   const rows = await db
     .select(selection)
@@ -176,27 +153,6 @@ export async function retrieveByScopes(
 ): Promise<StatementRow[]> {
   if (scopes.length === 0) return [];
   const patterns: ScopePattern[] = scopes.map((s) => s as ScopePattern);
-
-  if (opts.query) {
-    const results = await getBackend().search(patterns, {
-      text: opts.query,
-      limit: opts.limit ?? 100,
-      kind: opts.kind,
-    });
-    if (results.length === 0) return [];
-    const ids = results.map((r) => r.statementId);
-    const rows = await db
-      .select(selection)
-      .from(statements)
-      .where(inArray(statements.id, ids))
-      .orderBy(desc(statements.createdAt));
-    const scoreMap = new Map(results.map((r) => [r.statementId, r.score] as const));
-    return rows.map((row) => ({
-      ...row,
-      score: scoreMap.get(row.id),
-    })) as StatementRow[];
-  }
-
   const where = buildWhere(patterns, opts.kind);
   const rows = await db
     .select(selection)

@@ -3,9 +3,6 @@ import { db, close } from '../../src/store/client.js';
 import { migrate } from '../../src/store/migrate.js';
 import { seed } from '../../src/store/seed.js';
 import { appendIndexAndEmit } from '../../src/store/emit.js';
-import { HashEmbedder } from '../../src/store/embedders/hash.js';
-import { PgvectorSearchBackend } from '../../src/store/search/pgvector.js';
-import { setEmbedder, setBackend } from '../../src/store/vectors.js';
 import { EventBus } from '../../src/core/events.js';
 import { WorkerRegistry } from '../../src/core/worker.js';
 import { CronerScheduler } from '../../src/scheduler/croner-impl.js';
@@ -53,10 +50,6 @@ beforeAll(async () => {
       },
     ])
     .onConflictDoNothing();
-
-  const embedder = new HashEmbedder();
-  setEmbedder(embedder);
-  setBackend(new PgvectorSearchBackend(embedder));
 });
 
 afterAll(async () => {

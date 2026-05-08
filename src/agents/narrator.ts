@@ -2,6 +2,7 @@ import { randomUUID } from 'node:crypto';
 import { loadAgentPrompt } from '../store/content.js';
 import { getRoom } from '../store/rooms.js';
 import { listActiveSteeringFor } from '../store/steering.js';
+import { transcriptRegistry } from '../store/markdown/transcript-registry.js';
 import {
   createContextAssembler,
   type ContextAssembler,
@@ -209,6 +210,12 @@ export class Narrator {
       sources: sources ?? [],
     });
     ids.push(statementId);
+
+    // Dual-write to narration transcript (Phase 1).
+    transcriptRegistry
+      .get(roomId, 'narration')
+      .append('*narrator*', output.content)
+      .catch((err) => logger.warn({ err }, 'transcript-writer: narration append failed'));
 
     if (output.kind === 'invention' && output.openQuestion && this.config.adminRoomId) {
       const oqId = await this.statementStore.createOpenQuestion(

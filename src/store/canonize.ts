@@ -62,5 +62,5 @@ export async function canonizeOpenQuestion(
     return appendAndEmit(stmtInput, events);
   }
 
-  return appendStatement({ ...stmtInput, embedding: null });
+  return appendStatement(stmtInput);
 }

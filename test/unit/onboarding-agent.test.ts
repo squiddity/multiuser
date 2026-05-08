@@ -20,6 +20,7 @@ vi.mock('../../src/config/logger.js', () => ({
 
 vi.mock('../../src/config/env.js', () => ({
   env: {
+    SQLITE_URL: 'file::memory:?cache=shared',
     DEFAULT_MODEL_SPEC: 'openrouter:test-model',
     LOG_LLM_INPUT: false,
     LLM_SERIALIZE_CALLS: false,

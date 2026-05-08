@@ -1,20 +1,21 @@
-import postgres from 'postgres';
-import { drizzle } from 'drizzle-orm/postgres-js';
+import { createClient } from '@libsql/client';
+import { drizzle } from 'drizzle-orm/libsql';
 import { env } from '../config/env.js';
-import { logger } from '../config/logger.js';
 import * as schema from './schema.js';
 
-export const pg = postgres(env.DATABASE_URL, {
-  max: 10,
-  onnotice: env.LOG_DB_NOTICES ? (notice) => logger.info({ notice }, 'postgres notice') : () => {},
-});
-export const db = drizzle(pg, { schema });
+export const client = createClient({ url: env.SQLITE_URL });
+export const db = drizzle(client, { schema });
 export type DB = typeof db;
 
 export async function ping(): Promise<void> {
-  await pg`select 1`;
+  await client.execute('SELECT 1');
 }
 
 export async function close(): Promise<void> {
-  await pg.end({ timeout: 5 });
+  client.close();
+}
+
+export async function pragmas(): Promise<void> {
+  await client.execute('PRAGMA journal_mode = WAL');
+  await client.execute('PRAGMA foreign_keys = ON');
 }

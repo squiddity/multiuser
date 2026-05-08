@@ -5,16 +5,12 @@ import { seed } from '../../src/store/seed.js';
 import { appendAndIndex } from '../../src/store/vectors.js';
 import { appendAndEmit } from '../../src/store/emit.js';
 import { retrieveByScopes } from '../../src/store/retrieval.js';
-import { HashEmbedder } from '../../src/store/embedders/hash.js';
-import { PgvectorSearchBackend } from '../../src/store/search/pgvector.js';
-import { setEmbedder, setBackend } from '../../src/store/vectors.js';
 import { EventBus, type StatementEvent } from '../../src/core/events.js';
 import { WorkerRegistry, type WorkerContext } from '../../src/core/worker.js';
 import { CronerScheduler } from '../../src/scheduler/croner-impl.js';
 import { logger } from '../../src/config/logger.js';
 import { roleGrants, statements } from '../../src/store/schema.js';
 import { eq } from 'drizzle-orm';
-import type { SearchBackend } from '../../src/core/search.js';
 import type { Scope } from '../../src/core/statement.js';
 
 const PARTY_ROOM_ID = '11111111-1111-1111-1111-111111111111';
@@ -30,8 +26,6 @@ const testGrantIds: string[] = [
   'c0000000-0000-0000-0000-000000000001',
   'c0000000-0000-0000-0000-000000000002',
 ];
-
-let originalBackend: SearchBackend;
 
 beforeAll(async () => {
   await migrate();
@@ -60,9 +54,7 @@ beforeAll(async () => {
   ]);
 
   originalBackend = await (async () => {
-    const embedder = new HashEmbedder();
     const backend = new PgvectorSearchBackend(embedder);
-    setEmbedder(embedder);
     setBackend(backend);
     return backend;
   })();
