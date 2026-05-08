@@ -14,12 +14,8 @@ import { db, close } from '../../src/store/client.js';
 import { migrate } from '../../src/store/migrate.js';
 import { seed } from '../../src/store/seed.js';
 import { appendAndIndex } from '../../src/store/vectors.js';
-import { HashEmbedder } from '../../src/store/embedders/hash.js';
-import { PgvectorSearchBackend } from '../../src/store/search/pgvector.js';
-import { setEmbedder, setBackend } from '../../src/store/vectors.js';
 import { roleGrants, statements } from '../../src/store/schema.js';
 import { eq } from 'drizzle-orm';
-import type { SearchBackend } from '../../src/core/search.js';
 import type { Scope } from '../../src/core/statement.js';
 import type { ProviderResponse, Model } from '@earendil-works/pi-ai';
 import type { AgentMessage, AgentTool } from '@earendil-works/pi-agent-core';
@@ -110,8 +106,6 @@ const testGrantIds: string[] = [
   'c0000000-0000-0000-0000-000000000001',
   'c0000000-0000-0000-0000-000000000002',
 ];
-
-let originalBackend: SearchBackend;
 
 // Mock model for session runtime deps
 const testModel: Model<any> = {
@@ -205,14 +199,6 @@ beforeAll(async () => {
     content: 'The GM chamber is quiet, maps spread across the table.',
   });
   testStatementIds.push(adminId);
-
-  originalBackend = await (async () => {
-    const embedder = new HashEmbedder();
-    const backend = new PgvectorSearchBackend(embedder);
-    setEmbedder(embedder);
-    setBackend(backend);
-    return backend;
-  })();
 });
 
 afterAll(async () => {

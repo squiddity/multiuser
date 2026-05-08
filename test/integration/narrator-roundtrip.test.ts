@@ -4,12 +4,8 @@ import { migrate } from '../../src/store/migrate.js';
 import { seed } from '../../src/store/seed.js';
 import { appendAndIndex } from '../../src/store/vectors.js';
 import { retrieveForUserRoom } from '../../src/store/retrieval.js';
-import { HashEmbedder } from '../../src/store/embedders/hash.js';
-import { PgvectorSearchBackend } from '../../src/store/search/pgvector.js';
-import { setEmbedder, setBackend } from '../../src/store/vectors.js';
 import { roleGrants, statements } from '../../src/store/schema.js';
 import { eq } from 'drizzle-orm';
-import type { SearchBackend } from '../../src/core/search.js';
 import type { Scope } from '../../src/core/statement.js';
 
 const mockLlmGenerate = vi.fn();
@@ -32,8 +28,6 @@ const testGrantIds: string[] = [
   'd0000000-0000-0000-0000-000000000001',
   'd0000000-0000-0000-0000-000000000002',
 ];
-
-let originalBackend: SearchBackend;
 
 beforeAll(async () => {
   await migrate();
@@ -60,14 +54,6 @@ beforeAll(async () => {
       precedence: 0,
     },
   ]);
-
-  originalBackend = await (async () => {
-    const embedder = new HashEmbedder();
-    const backend = new PgvectorSearchBackend(embedder);
-    setEmbedder(embedder);
-    setBackend(backend);
-    return backend;
-  })();
 
   const worldId = await appendAndIndex({
     scope: { type: 'world' } as Scope,

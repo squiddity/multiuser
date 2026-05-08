@@ -1,56 +1,31 @@
-import { sql } from 'drizzle-orm';
-import {
-  pgTable,
-  uuid,
-  text,
-  timestamp,
-  jsonb,
-  index,
-  integer,
-  boolean,
-} from 'drizzle-orm/pg-core';
-import { customType } from 'drizzle-orm/pg-core';
+import { sqliteTable, text, integer, index } from 'drizzle-orm/sqlite-core';
+import { randomUUID } from 'node:crypto';
 
-// pgvector column helper — raw SQL since drizzle doesn't ship a first-party vector type yet.
-const vector = (name: string, dim: number) =>
-  customType<{ data: number[]; driverData: string }>({
-    dataType() {
-      return `vector(${dim})`;
-    },
-    toDriver(value: number[]): string {
-      return `[${value.join(',')}]`;
-    },
-    fromDriver(value: string): number[] {
-      return value
-        .slice(1, -1)
-        .split(',')
-        .map((s) => Number(s));
-    },
-  })(name);
-
-const EMBED_DIM = Number(process.env.EMBED_DIM ?? 1536);
-
-export const statements = pgTable(
+export const statements = sqliteTable(
   'statements',
   {
-    id: uuid('id').primaryKey().defaultRandom(),
+    id: text('id')
+      .primaryKey()
+      .$defaultFn(() => randomUUID()),
     scopeType: text('scope_type').notNull(),
     scopeKey: text('scope_key'),
     kind: text('kind').notNull(),
     authorType: text('author_type').notNull(),
     authorId: text('author_id').notNull(),
     icOoc: text('ic_ooc'),
-    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
-    supersedes: uuid('supersedes'),
-    sources: uuid('sources')
-      .array()
+    createdAt: integer('created_at', { mode: 'timestamp_ms' })
       .notNull()
-      .default(sql`'{}'::uuid[]`),
+      .$defaultFn(() => new Date()),
+    supersedes: text('supersedes'),
+    sources: text('sources', { mode: 'json' })
+      .$type<string[]>()
+      .notNull()
+      .$defaultFn(() => []),
     content: text('content').notNull(),
-    fields: jsonb('fields')
+    fields: text('fields', { mode: 'json' })
+      .$type<Record<string, unknown>>()
       .notNull()
-      .default(sql`'{}'::jsonb`),
-    embedding: vector('embedding', EMBED_DIM),
+      .$defaultFn(() => ({})),
   },
   (t) => ({
     scopeIdx: index('statements_scope_idx').on(t.scopeType, t.scopeKey, t.createdAt),
@@ -59,71 +34,91 @@ export const statements = pgTable(
   }),
 );
 
-export const entities = pgTable('entities', {
-  id: uuid('id').primaryKey().defaultRandom(),
-  kind: text('kind').notNull(), // npc, location, faction, item, deity, ...
+export const entities = sqliteTable('entities', {
+  id: text('id')
+    .primaryKey()
+    .$defaultFn(() => randomUUID()),
+  kind: text('kind').notNull(),
   name: text('name').notNull(),
   scopeType: text('scope_type').notNull(),
   scopeKey: text('scope_key'),
-  fields: jsonb('fields')
+  fields: text('fields', { mode: 'json' })
+    .$type<Record<string, unknown>>()
     .notNull()
-    .default(sql`'{}'::jsonb`),
-  primaryStatementId: uuid('primary_statement_id').references(() => statements.id),
-  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
-});
-
-export const rooms = pgTable('rooms', {
-  id: uuid('id').primaryKey().defaultRandom(),
-  name: text('name').notNull(),
-  binding: jsonb('binding').notNull(),
-  oversightOf: uuid('oversight_of')
-    .array()
+    .$defaultFn(() => ({})),
+  primaryStatementId: text('primary_statement_id').references(() => statements.id),
+  createdAt: integer('created_at', { mode: 'timestamp_ms' })
     .notNull()
-    .default(sql`'{}'::uuid[]`),
-  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
-  archivedAt: timestamp('archived_at', { withTimezone: true }),
+    .$defaultFn(() => new Date()),
 });
 
-export const roles = pgTable('roles', {
-  id: uuid('id').primaryKey().defaultRandom(),
+export const rooms = sqliteTable('rooms', {
+  id: text('id')
+    .primaryKey()
+    .$defaultFn(() => randomUUID()),
   name: text('name').notNull(),
-  definition: jsonb('definition').notNull(), // Role shape minus id
+  binding: text('binding', { mode: 'json' }).$type<Record<string, unknown>>().notNull(),
+  oversightOf: text('oversight_of', { mode: 'json' })
+    .$type<string[]>()
+    .notNull()
+    .$defaultFn(() => []),
+  createdAt: integer('created_at', { mode: 'timestamp_ms' })
+    .notNull()
+    .$defaultFn(() => new Date()),
+  archivedAt: integer('archived_at', { mode: 'timestamp_ms' }),
 });
 
-export const roleGrants = pgTable(
+export const roles = sqliteTable('roles', {
+  id: text('id')
+    .primaryKey()
+    .$defaultFn(() => randomUUID()),
+  name: text('name').notNull(),
+  definition: text('definition', { mode: 'json' }).$type<Record<string, unknown>>().notNull(),
+});
+
+export const roleGrants = sqliteTable(
   'role_grants',
   {
-    id: uuid('id').primaryKey().defaultRandom(),
+    id: text('id')
+      .primaryKey()
+      .$defaultFn(() => randomUUID()),
     userId: text('user_id').notNull(),
-    roomId: uuid('room_id')
+    roomId: text('room_id')
       .notNull()
       .references(() => rooms.id),
-    roleId: uuid('role_id')
+    roleId: text('role_id')
       .notNull()
       .references(() => roles.id),
-    grantedAt: timestamp('granted_at', { withTimezone: true }).notNull().defaultNow(),
+    grantedAt: integer('granted_at', { mode: 'timestamp_ms' })
+      .notNull()
+      .$defaultFn(() => new Date()),
     grantedBy: text('granted_by').notNull(),
     precedence: integer('precedence').notNull().default(0),
-    revokedAt: timestamp('revoked_at', { withTimezone: true }),
+    revokedAt: integer('revoked_at', { mode: 'timestamp_ms' }),
   },
   (t) => ({
     byUserRoom: index('role_grants_user_room_idx').on(t.userId, t.roomId),
   }),
 );
 
-export const mappings = pgTable(
+export const mappings = sqliteTable(
   'mappings',
   {
-    id: uuid('id').primaryKey().defaultRandom(),
-    kind: text('kind').notNull(), // room-channel, role-discord-role, user-discord-user
+    id: text('id')
+      .primaryKey()
+      .$defaultFn(() => randomUUID()),
+    kind: text('kind').notNull(),
     sourceId: text('source_id').notNull(),
     platform: text('platform').notNull(),
     platformId: text('platform_id').notNull(),
-    fields: jsonb('fields')
+    fields: text('fields', { mode: 'json' })
+      .$type<Record<string, unknown>>()
       .notNull()
-      .default(sql`'{}'::jsonb`),
-    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
-    supersedes: uuid('supersedes'),
+      .$defaultFn(() => ({})),
+    createdAt: integer('created_at', { mode: 'timestamp_ms' })
+      .notNull()
+      .$defaultFn(() => new Date()),
+    supersedes: text('supersedes'),
   },
   (t) => ({
     byKindSource: index('mappings_kind_source_idx').on(t.kind, t.sourceId),
@@ -131,20 +126,28 @@ export const mappings = pgTable(
   }),
 );
 
-export const schedules = pgTable('schedules', {
-  id: uuid('id').primaryKey().defaultRandom(),
+export const schedules = sqliteTable('schedules', {
+  id: text('id')
+    .primaryKey()
+    .$defaultFn(() => randomUUID()),
   workerName: text('worker_name').notNull(),
-  trigger: jsonb('trigger').notNull(),
-  payload: jsonb('payload').notNull(),
-  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
-  active: boolean('active').notNull().default(true),
+  trigger: text('trigger', { mode: 'json' }).$type<Record<string, unknown>>().notNull(),
+  payload: text('payload', { mode: 'json' }).$type<Record<string, unknown>>().notNull(),
+  createdAt: integer('created_at', { mode: 'timestamp_ms' })
+    .notNull()
+    .$defaultFn(() => new Date()),
+  active: integer('active', { mode: 'boolean' }).notNull().default(true),
 });
 
-export const webhooks = pgTable('webhooks', {
-  id: uuid('id').primaryKey().defaultRandom(),
+export const webhooks = sqliteTable('webhooks', {
+  id: text('id')
+    .primaryKey()
+    .$defaultFn(() => randomUUID()),
   platform: text('platform').notNull(),
   channelId: text('channel_id').notNull(),
   webhookId: text('webhook_id').notNull(),
   webhookToken: text('webhook_token').notNull(),
-  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  createdAt: integer('created_at', { mode: 'timestamp_ms' })
+    .notNull()
+    .$defaultFn(() => new Date()),
 });

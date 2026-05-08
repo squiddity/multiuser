@@ -294,7 +294,6 @@ export async function completeDiscordDemoOnboarding(input: {
       sessionId: input.sessionId,
       draft: input.draft,
     },
-    embedding: null,
   });
 
   await recordMapping({
@@ -360,7 +359,6 @@ export async function completeDiscordDemoOnboarding(input: {
       characterId,
       characterName: input.draft.name,
     },
-    embedding: null,
   });
 
   return {

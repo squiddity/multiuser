@@ -1,0 +1,11 @@
+[project]
+name = "multiuser-tools"
+version = "0.1.0"
+description = "Python tooling for the multiuser platform (memsearch, etc.)"
+requires-python = ">=3.12"
+dependencies = [
+    "memsearch>=0.1.0",
+]
+
+[tool.uv]
+dev-dependencies = []

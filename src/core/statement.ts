@@ -63,7 +63,6 @@ const StatementSchema = Type.Object({
   sources: Type.Optional(Type.Array(UUID, { default: [] })),
   content: Type.String(),
   fields: Type.Optional(Type.Record(Type.String(), Type.Unknown(), { default: {} })),
-  embedding: Type.Optional(Type.Array(Type.Number())),
 });
 export const Statement = withValidation(StatementSchema);
 export type Statement = Static<typeof StatementSchema>;
