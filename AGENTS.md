@@ -26,7 +26,7 @@ pnpm format:check  # or fix with: pnpm format
 # 3. Unit tests (required)
 pnpm test
 
-# 4. Integration tests (if Postgres available)
+# 4. Integration tests (required when changing storage paths)
 pnpm test:integration
 ```
 
@@ -57,9 +57,8 @@ pnpm test:integration
 **Running tests**:
 
 - **Unit tests** (no DB): `pnpm test` or `npx vitest run`
-- **Integration tests** (require Postgres): `pnpm test:integration` or `npx vitest run test/integration`
-  - Start Postgres first: `docker compose -f docker/compose.yml up -d postgres`
-  - Tests self-migrate and clean up. Safe to re-run.
+- **Integration tests** (SQLite, no external services): `pnpm test:integration` or `npx vitest run test/integration`
+  - Tests open a temp SQLite (in-memory by default) and self-migrate. Safe to re-run.
 - **Hermetic API tests**: `pnpm test:api`
   - Script auto-creates `.venv-api-tests` and installs `pytest`/`httpx` when missing.
   - Optional overrides: `PYTHON_BIN=/path/to/python3` and `API_TEST_VENV=/custom/path`.
@@ -89,6 +88,8 @@ pnpm test:integration
 - `docs/llm-context-efficiency.md` — future plan for cache-friendly session context, retrieval layering, and compaction.
 - `docs/statement-store-abstraction.md` — canonical statement-store contract and backend swap constraints.
 - `docs/workflow-session-store.md` — generic session-scope persistence contract for interruptible agent workflows.
+- `docs/memory-architecture.md` — markdown + memsearch + SQLite stack; refactor phasing (Phases 0–1 shipped; 2–5 pending).
+- `docs/python-environment.md` — project-local `.venv/` workflow via `uv`.
 - `docs/typebox-migration.md` — migration record for TypeBox adoption.
 - `docs/platform-adapter.md` — platform-agnostic adapter interface; Discord v1 specifics.
 - `docs/ui-and-interactions.md` — interaction surfaces, Discord UI patterns, deferred media.
