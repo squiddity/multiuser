@@ -203,7 +203,7 @@ export function resolveModel(spec: string): Model<any> {
         supportsStore: false,
         supportsDeveloperRole: false,
         supportsReasoningEffort: env.LOCAL_MODEL_REASONING,
-        supportsUsageInStreaming: false,
+        supportsUsageInStreaming: true,
         maxTokensField: 'max_tokens',
       },
     } satisfies Model<'openai-completions'>;

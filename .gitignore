@@ -13,3 +13,14 @@ drizzle/meta/
 .pi/
 test-api/__pycache__/
 test-results/
+/.bash_profile
+/.bashrc
+/.gitconfig
+/.gitmodules
+/.idea
+/.mcp.json
+/.profile
+/.ripgreprc
+/.vscode
+/.zprofile
+/.zshrc
